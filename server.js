@@ -209,6 +209,8 @@ function processDawn(room) {
 
   room.phase = "dawn";
 
+  room.dawnVotes = {}; // reset votes for this dawn
+
   broadcast(room, "dawn", {
     killed: killed ? { id: killed.id, name: killed.name } : null,
     savedAttempt,
@@ -412,6 +414,18 @@ wss.on("connection", (ws) => {
     if (type === "redo_vote") {
       if (player.id !== room.hostId) return;
       startVoting(room);
+      return;
+    }
+
+    // ── DAWN VOTE ──
+    if (type === "dawn_vote") {
+      if (!player.alive) return;
+      if (room.phase !== "dawn") return;
+      const { choice } = msg; // "vote" | "continue"
+      if (choice !== "vote" && choice !== "continue") return;
+      room.dawnVotes = room.dawnVotes || {};
+      room.dawnVotes[player.id] = choice;
+      broadcast(room, "dawn_vote_update", { votes: room.dawnVotes });
       return;
     }
 
