@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MAFIJA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #080810; --surface: #10101e; --surface2: #18182e;
+  --border: #2a2a45; --text: #e8e6f0; --muted: #7a78a0;
+  --accent: #c9a84c; --accent2: #8b5cf6; --danger: #c0392b;
+  --success: #27ae60; --radius: 12px;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Crimson Text', Georgia, serif;
+  min-height: 100vh; display: flex; justify-content: center;
+  align-items: flex-start; overflow-x: hidden;
+}
+body::before {
+  content:''; position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(120,20,20,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(60,20,100,0.18) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+#app {
+  width: 100%; max-width: 480px; margin: 0 auto;
+  padding: 20px 20px 80px; min-height: 100vh;
+  position: relative; z-index: 1;
+}
+
+/* BUTTONS */
+.btn-primary {
+  width: 100%; background: var(--accent); color: #000; border: none;
+  border-radius: 10px; padding: 14px; font-family: 'Cinzel', serif;
+  font-size: 1rem; font-weight: 700; letter-spacing: 0.1em;
+  cursor: pointer; transition: all 0.2s; margin-top: 8px; display: block;
+}
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-secondary {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 10px; padding: 12px;
+  font-family: 'Cinzel', serif; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+}
+.btn-secondary:hover { border-color: var(--accent); }
+.btn-ghost {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 8px; padding: 10px 18px; cursor: pointer;
+  font-family: 'Crimson Text', serif; font-size: 1rem; width: 100%;
+  transition: all 0.15s; margin-top: 4px; display: block;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* INPUTS */
+.input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; color: var(--text);
+  font-family: 'Crimson Text', serif; font-size: 1.1rem; outline: none;
+  transition: border-color 0.2s; margin-bottom: 10px;
+}
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--muted); }
+.input-code {
+  text-transform: uppercase; letter-spacing: 0.3em; font-family: 'Cinzel', serif;
+  font-size: 1.4rem; text-align: center;
+}
+
+/* CARD */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px; width: 100%;
+  box-shadow: 0 0 40px rgba(192,57,43,0.06), 0 8px 32px rgba(0,0,0,0.4);
+  position: relative; overflow: hidden; margin-bottom: 16px;
+}
+.card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent);
+}
+
+/* HEADER */
+.home-header { text-align: center; padding: 32px 0 28px; position: relative; }
+.home-header::before {
+  content: ''; position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(192,57,43,0.12) 0%, transparent 70%);
+  border-radius: 50%; pointer-events: none;
+}
+.moon { font-size: 2.8rem; animation: float 4s ease-in-out infinite; display: block; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+h1.title {
+  font-family: 'Cinzel', serif; font-size: 2.8rem; font-weight: 900;
+  letter-spacing: 0.3em; color: var(--accent);
+  text-shadow: 0 0 40px rgba(201,168,76,0.4); margin: 8px 0 4px;
+}
+.subtitle { font-size: 0.95rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; }
+.section-label {
+  font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 0.15em;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 14px;
+}
+.hint { color: var(--muted); font-size: 0.95rem; font-style: italic; margin-bottom: 8px; }
+.error { color: var(--danger); font-size: 0.9rem; padding: 8px 0; text-align: center; }
+
+/* TOGGLE */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0; border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border); margin: 16px 0;
+}
+.toggle-info { display: flex; align-items: center; gap: 12px; }
+.toggle-emoji { font-size: 1.4rem; }
+.toggle-name { font-size: 1rem; font-weight: 600; }
+.toggle-desc { font-size: 0.78rem; color: var(--muted); }
+.toggle {
+  background: var(--border); border: none; border-radius: 20px;
+  width: 46px; height: 25px; cursor: pointer; position: relative;
+  transition: background 0.25s; flex-shrink: 0;
+}
+.toggle.on { background: var(--accent2); }
+.toggle-knob {
+  position: absolute; top: 3px; left: 3px; width: 19px; height: 19px;
+  background: white; border-radius: 50%; transition: transform 0.25s; display: block;
+}
+.toggle.on .toggle-knob { transform: translateX(21px); }
+
+/* CODE DISPLAY */
+.code-display {
+  background: var(--surface2); border: 2px solid var(--accent);
+  border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 16px;
+}
+.code-label { font-size: 0.78rem; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.code-value {
+  font-family: 'Cinzel', serif; font-size: 3rem; font-weight: 900;
+  color: var(--accent); letter-spacing: 0.3em;
+  text-shadow: 0 0 20px rgba(201,168,76,0.4);
+}
+.code-sub { font-size: 0.85rem; color: var(--muted); margin-top: 6px; font-style: italic; }
+
+/* PLAYER LIST */
+.player-list-lobby { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.player-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px;
+}
+.player-item.host { border-color: rgba(201,168,76,0.3); }
+.player-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--border); display: flex; align-items: center;
+  justify-content: center; font-size: 0.85rem; color: var(--muted); flex-shrink: 0;
+}
+.player-item.host .player-avatar { background: rgba(201,168,76,0.15); color: var(--accent); }
+.player-item-name { font-size: 1rem; flex: 1; }
+.host-badge {
+  font-size: 0.7rem; color: var(--accent); letter-spacing: 0.08em;
+  text-transform: uppercase; background: rgba(201,168,76,0.1);
+  padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(201,168,76,0.2);
+}
+.waiting-badge {
+  font-size: 0.7rem; color: var(--muted); letter-spacing: 0.06em;
+  font-style: italic;
+}
+
+/* PHASE HEADER */
+.phase-header { text-align: center; padding: 28px 0 20px; }
+.phase-tag {
+  display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 14px; font-size: 0.78rem; letter-spacing: 0.1em;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 10px;
+}
+h2 { font-family: 'Cinzel', serif; font-size: 1.4rem; margin-bottom: 8px; }
+
+/* ROLE CARD */
+.role-card {
+  background: var(--surface); border-radius: 16px; padding: 32px 24px;
+  text-align: center; position: relative; overflow: hidden; margin-bottom: 16px;
+}
+.role-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.role-emoji-big { font-size: 4rem; line-height: 1.2; margin-bottom: 8px; }
+.role-label-big { font-family: 'Cinzel', serif; font-size: 1.6rem; font-weight: 700; margin-bottom: 12px; }
+.role-desc { color: var(--muted); font-size: 1rem; line-height: 1.6; font-style: italic; }
+
+/* NIGHT */
+.night-screen { background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(80,10,10,0.4) 0%, transparent 60%); }
+.blood-moon {
+  position: fixed; top: -60px; right: 10%; width: 150px; height: 150px;
+  background: radial-gradient(circle at 40% 40%, #c0392b, #7b0e0e 60%, #3a0000);
+  border-radius: 50%; box-shadow: 0 0 60px rgba(192,57,43,0.5), 0 0 120px rgba(192,57,43,0.2);
+  pointer-events: none; z-index: 0; animation: moonpulse 6s ease-in-out infinite;
+}
+@keyframes moonpulse {
+  0%,100%{box-shadow:0 0 60px rgba(192,57,43,0.5),0 0 120px rgba(192,57,43,0.2)}
+  50%{box-shadow:0 0 80px rgba(192,57,43,0.7),0 0 160px rgba(192,57,43,0.3)}
+}
+.stars { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.stars span { position: absolute; color: rgba(200,190,255,0.6); font-size: 0.55rem; animation: twinkle 3s ease-in-out infinite; }
+@keyframes twinkle { 0%,100%{opacity:0.15;transform:scale(1)} 50%{opacity:0.9;transform:scale(1.3)} }
+
+/* PICK LIST */
+.pick-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.pick-btn {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 13px 16px; color: var(--text); font-family: 'Crimson Text', serif;
+  font-size: 1.05rem; cursor: pointer; transition: all 0.15s; text-align: left; width: 100%;
+}
+.pick-btn:hover { border-color: var(--accent); }
+.pick-btn.picked { background: rgba(201,168,76,0.08); }
+
+/* WAITING */
+.waiting-screen { text-align: center; padding: 60px 20px; }
+.waiting-spinner { font-size: 2.5rem; animation: spin 2s linear infinite; margin-bottom: 16px; }
+@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+.waiting-title { font-family: 'Cinzel', serif; font-size: 1.3rem; color: var(--muted); }
+.waiting-sub { font-size: 0.9rem; color: var(--muted); margin-top: 8px; font-style: italic; }
+
+/* EVENTS */
+.events-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px; margin-bottom: 16px;
+  position: relative; overflow: hidden;
+}
+.events-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, rgba(192,57,43,0.6), rgba(201,168,76,0.4), rgba(142,68,173,0.4));
+}
+.event-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px; border-radius: 8px; }
+.event-item.dead { background: rgba(192,57,43,0.1); }
+.event-item.saved { background: rgba(39,174,96,0.1); }
+.event-item.peace { background: rgba(74,74,122,0.15); }
+.event-item.silenced { background: rgba(142,68,173,0.1); }
+.event-item.takeover { background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.3); }
+.event-icon { font-size: 1.4rem; flex-shrink: 0; }
+.event-name { font-size: 1rem; font-weight: 600; margin-bottom: 2px; }
+.event-sub { font-size: 0.82rem; color: var(--muted); }
+
+/* VOTING */
+.tally-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; margin-bottom: 16px; }
+.tally-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; border-radius: 8px; }
+.tally-row.eliminated { background: rgba(192,57,43,0.15); border: 1px solid rgba(192,57,43,0.3); }
+.tally-name { font-size: 1rem; }
+.tally-votes { color: var(--muted); font-size: 0.88rem; }
+
+.result-box {
+  background: var(--surface); border: 1px solid var(--accent);
+  border-radius: var(--radius); padding: 28px 20px;
+  text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 16px;
+}
+.result-box.tie { border-color: var(--border); }
+.win-text { font-family: 'Cinzel', serif; font-size: 1.5rem; color: var(--accent); }
+.fail-text { font-family: 'Cinzel', serif; font-size: 1.5rem; color: var(--muted); }
+.result-sub { color: var(--muted); font-size: 0.9rem; }
+
+/* PLAYERS STATUS BAR */
+.players-bar {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px;
+}
+.player-chip {
+  font-size: 0.82rem; padding: 4px 10px; border-radius: 20px;
+  border: 1px solid var(--border); color: var(--muted); background: var(--surface2);
+}
+.player-chip.alive { color: var(--text); border-color: rgba(201,168,76,0.3); }
+.player-chip.silenced { color: #8e44ad; border-color: rgba(142,68,173,0.4); }
+.player-chip.dead { text-decoration: line-through; opacity: 0.4; }
+.player-chip.me { border-color: var(--accent); color: var(--accent); }
+
+/* POLICE RESULT */
+.police-result-box {
+  border-radius: 10px; padding: 16px; text-align: center; margin: 8px 0;
+  font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 700;
+}
+
+/* GAMEOVER */
+.gameover-screen {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; min-height: 80vh; padding: 40px 0;
+}
+.gameover-emoji { font-size: 5rem; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+.gameover-title { font-family: 'Cinzel', serif; font-size: 2.2rem; font-weight: 900; color: var(--accent); margin-bottom: 8px; text-shadow: 0 0 30px rgba(201,168,76,0.4); }
+.gameover-sub { color: var(--muted); font-size: 1rem; font-style: italic; margin-bottom: 32px; }
+
+.dawn-btns { display: flex; gap: 10px; margin-top: 8px; }
+
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+.police-confirmed { font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 700; padding: 14px; border-radius: 8px; margin: 8px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ═══════════════════════════════════════
+//  WEBSOCKET
+// ═══════════════════════════════════════
+const WS_URL = location.protocol === "https:"
+  ? `wss://${location.host}`
+  : `ws://${location.host}`;
+
+let ws = null;
+let reconnectTimer = null;
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => { if (state.phase === "connecting") { state.phase = "home"; render(); } };
+  ws.onmessage = e => handleMessage(JSON.parse(e.data));
+  ws.onclose = () => {
+    if (state.phase !== "home" && state.phase !== "connecting") {
+      showToast("Veza prekinuta — pokušavam ponovo...", "error");
+    }
+    reconnectTimer = setTimeout(connect, 2000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+function send(type, data = {}) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, ...data }));
+}
+
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+const ROLES = {
+  mafia:    { emoji:"🔪", label:"Mafija",    color:"#c0392b", desc:"Ti si ubica. U svakoj rundi biraš koga ćeš da ubiješ i tokom igre moraš da se odbraniš da to nisi ti." },
+  doctor:   { emoji:"💊", label:"Lekar",     color:"#27ae60", desc:"Ti spasavaš ljude. U svakoj rundi moraš da izabereš nekog koga ćeš da sačuvaš od ubistava." },
+  police:   { emoji:"🔍", label:"Policajac", color:"#2980b9", desc:"Ti proveravaš ko je ubica. U svakoj rundi klikneš na ime nekog igrača i saznaš da li je mafija ili ne." },
+  joker:    { emoji:"🃏", label:"Džoker",    color:"#8e44ad", desc:"Ti možeš da ućutkuješ ljude. U svakoj rundi možeš da izabereš koga ćeš da ućutkaš i ta osoba ne može da priča celu tu rundu." },
+  civilian: { emoji:"👤", label:"Građanin",  color:"#7f8c8d", desc:"Ti si običan građanin. Nemaš posebne moći, ali tvoj glas na glasanju može biti presudan." },
+};
+
+let state = {
+  phase: "connecting",   // connecting|home|lobby|game_night_wait|game_night_acting|game_dawn|game_dawn_host|game_voting_wait|game_voting_acting|game_vote_result|gameover
+  myId: null,
+  myName: "",
+  myRole: null,
+  isHost: false,
+  roomCode: "",
+  players: [],           // public info
+  hostId: null,
+  includeJoker: false,
+  round: 1,
+  // night
+  currentRoleLabel: "",
+  currentRoleEmoji: "",
+  currentRoleColor: "",
+  isMyTurn: false,
+  nightTargets: [],
+  isPolice: false,
+  policeResult: null,
+  policeCheckDone: false,
+  selectedTarget: null,
+  // dawn
+  dawnData: null,
+  // voting
+  currentVoterId: null,
+  currentVoterName: "",
+  isMyVoteTurn: false,
+  voteTargets: [],
+  selectedVote: null,
+  voteResult: null,
+  // ui
+  nameInput: "",
+  codeInput: "",
+  errorMsg: "",
+};
+
+// ═══════════════════════════════════════
+//  MESSAGE HANDLER
+// ═══════════════════════════════════════
+function handleMessage(msg) {
+  switch(msg.type) {
+
+    case "room_created":
+    case "room_joined":
+      state.myId = msg.playerId;
+      state.roomCode = msg.code;
+      state.isHost = msg.isHost;
+      state.phase = "lobby";
+      state.errorMsg = "";
+      render();
+      break;
+
+    case "lobby_update":
+      state.players = msg.players;
+      state.hostId = msg.hostId;
+      state.includeJoker = msg.includeJoker;
+      if (state.phase === "lobby") render();
+      break;
+
+    case "game_started":
+      state.players = msg.players;
+      state.phase = "game_night_wait";
+      render();
+      break;
+
+    case "your_role":
+      state.myRole = msg.role;
+      state.myRoleInfo = msg.roleInfo;
+      render();
+      break;
+
+    case "night_started":
+      state.round = msg.round;
+      state.isMyTurn = false;
+      state.selectedTarget = null;
+      state.policeResult = null;
+      state.policeCheckDone = false;
+      state.phase = "game_night_wait";
+      render();
+      break;
+
+    case "night_role_prompt":
+      state.currentRoleLabel = msg.roleLabel;
+      state.currentRoleEmoji = msg.roleEmoji;
+      state.currentRoleColor = msg.roleColor;
+      state.isMyTurn = false;
+      state.phase = "game_night_wait";
+      render();
+      break;
+
+    case "your_turn":
+      state.isMyTurn = true;
+      state.nightTargets = msg.targets;
+      state.isPolice = msg.isPolice;
+      state.selectedTarget = null;
+      state.policeResult = null;
+      state.policeCheckDone = false;
+      state.phase = "game_night_acting";
+      render();
+      break;
+
+    case "police_result":
+      state.policeResult = msg;
+      state.policeCheckDone = true;
+      render();
+      break;
+
+    case "dawn":
+      state.dawnData = msg;
+      state.players = msg.players;
+      state.round = msg.round;
+      state.phase = state.isHost ? "game_dawn_host" : "game_dawn";
+      render();
+      break;
+
+    case "voting_started":
+      state.players = msg.players;
+      state.isMyVoteTurn = false;
+      state.selectedVote = null;
+      state.phase = "game_voting_wait";
+      render();
+      break;
+
+    case "voting_turn":
+      state.currentVoterId = msg.voterId;
+      state.currentVoterName = msg.voterName;
+      if (msg.voterId === state.myId) {
+        // my turn handled via your_vote_turn
+      } else {
+        state.isMyVoteTurn = false;
+        state.phase = "game_voting_wait";
+        render();
+      }
+      break;
+
+    case "your_vote_turn":
+      state.isMyVoteTurn = true;
+      state.voteTargets = msg.targets;
+      state.selectedVote = null;
+      state.phase = "game_voting_acting";
+      render();
+      break;
+
+    case "vote_cast":
+      render();
+      break;
+
+    case "vote_result":
+      state.voteResult = msg;
+      state.players = msg.players || state.players;
+      state.phase = "game_vote_result";
+      render();
+      break;
+
+    case "player_left":
+      state.players = msg.players;
+      showToast("Igrač je napustio igru", "warn");
+      render();
+      break;
+
+    case "error":
+      state.errorMsg = msg.message;
+      render();
+      break;
+  }
+}
+
+// ═══════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  app.className = "";
+
+  switch(state.phase) {
+    case "connecting":     renderConnecting(app); break;
+    case "home":           renderHome(app); break;
+    case "lobby":          renderLobby(app); break;
+    case "game_night_wait":
+    case "game_night_acting": renderNight(app); break;
+    case "game_dawn":
+    case "game_dawn_host": renderDawn(app); break;
+    case "game_voting_wait":
+    case "game_voting_acting": renderVoting(app); break;
+    case "game_vote_result": renderVoteResult(app); break;
+    case "gameover":       renderGameover(app); break;
+  }
+}
+
+function el(tag, attrs={}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs)) {
+    if (k==="class") e.className=v;
+    else if (k==="style") Object.assign(e.style,v);
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(),v);
+    else e.setAttribute(k,v);
+  }
+  for (const c of children) {
+    if (c==null||c===false) continue;
+    if (c instanceof Node) e.append(c);
+    else e.append(document.createTextNode(String(c)));
+  }
+  return e;
+}
+
+function btn(text, cls, onClick, extraStyle={}) {
+  const b = el("button", {class:cls, style:extraStyle, onClick});
+  b.innerHTML = text;
+  return b;
+}
+
+function playersBar(players, myId) {
+  const bar = el("div",{class:"players-bar"});
+  players.forEach(p => {
+    let cls = "player-chip";
+    if (!p.alive) cls += " dead";
+    else if (p.silenced) cls += " silenced";
+    else cls += " alive";
+    if (p.id === myId) cls += " me";
+    const chip = el("span",{class:cls}, (p.silenced&&p.alive?"🤫 ":"") + p.name + (p.id===myId?" (ti)":""));
+    bar.append(chip);
+  });
+  return bar;
+}
+
+function starsBg() {
+  const div = el("div",{class:"stars"});
+  const moon = el("div",{class:"blood-moon"});
+  for (let i=0;i<40;i++) {
+    const s = el("span",{style:{
+      left:`${(i*37+i*i*3)%100}%`,
+      top:`${(i*53+i*7)%100}%`,
+      animationDelay:`${(i*0.17)%4}s`
+    }}, i%3===0?"✦":i%3===1?"✧":"·");
+    div.append(s);
+  }
+  return [moon, div];
+}
+
+// ── CONNECTING ──
+function renderConnecting(app) {
+  app.append(el("div",{class:"waiting-screen"},
+    el("div",{class:"waiting-spinner"},"🌙"),
+    el("div",{class:"waiting-title"},"Povezivanje..."),
+    el("div",{class:"waiting-sub"},"Čekaj trenutak")
+  ));
+}
+
+// ── HOME ──
+function renderHome(app) {
+  const errDiv = el("div",{class:"error",style:{display:state.errorMsg?"block":"none"}},state.errorMsg);
+
+  const nameInp = el("input",{class:"input",placeholder:"Tvoje ime",value:state.nameInput});
+  nameInp.addEventListener("input", e => { state.nameInput=e.target.value; state.errorMsg=""; errDiv.style.display="none"; });
+
+  // CREATE
+  const createCard = el("div",{class:"card"},
+    el("div",{class:"section-label"},"Nova igra"),
+    nameInp,
+    btn("🌙 Napravi sobu","btn-primary",()=>{
+      const name = state.nameInput.trim();
+      if (!name) { state.errorMsg="Unesite ime."; render(); return; }
+      send("create_room",{name, includeJoker:false});
+    })
+  );
+
+  // JOIN
+  const codeInp = el("input",{class:"input input-code",placeholder:"XXXX",maxlength:"4",value:state.codeInput});
+  codeInp.addEventListener("input",e=>{state.codeInput=e.target.value.toUpperCase().slice(0,4);codeInp.value=state.codeInput;state.errorMsg="";errDiv.style.display="none";});
+
+  const joinCard = el("div",{class:"card"},
+    el("div",{class:"section-label"},"Pridruži se"),
+    codeInp,
+    btn("Pridruži se →","btn-primary",()=>{
+      const name = state.nameInput.trim();
+      const code = state.codeInput.trim();
+      if (!name) { state.errorMsg="Unesite ime pre pridruživanja."; render(); return; }
+      if (code.length < 4) { state.errorMsg="Unesite 4-slovni kod sobe."; render(); return; }
+      send("join_room",{name,code});
+    })
+  );
+
+  app.append(
+    el("div",{class:"home-header"},
+      el("span",{class:"moon"},"🌙"),
+      el("h1",{class:"title"},"MAFIJA"),
+      el("p",{class:"subtitle"},"Multiplayer narator")
+    ),
+    errDiv,
+    createCard,
+    joinCard
+  );
+}
+
+// ── LOBBY ──
+function renderLobby(app) {
+  const codeBox = el("div",{class:"code-display"},
+    el("div",{class:"code-label"},"Kod sobe"),
+    el("div",{class:"code-value"},state.roomCode),
+    el("div",{class:"code-sub"},"Pošalji ovaj kod ostalim igračima")
+  );
+
+  const listDiv = el("div",{class:"player-list-lobby"});
+  state.players.forEach(p=>{
+    const isHost = p.id===state.hostId;
+    const item = el("div",{class:"player-item"+(isHost?" host":"")},
+      el("div",{class:"player-avatar"},p.name[0].toUpperCase()),
+      el("div",{class:"player-item-name"},p.name+(p.id===state.myId?" (ti)":""))
+    );
+    if (isHost) item.append(el("span",{class:"host-badge"},"Host"));
+    else item.append(el("span",{class:"waiting-badge"},"čeka..."));
+    listDiv.append(item);
+  });
+
+  const playersCard = el("div",{class:"card"},
+    el("div",{class:"section-label"},`Igrači (${state.players.length})`),
+    listDiv
+  );
+
+  app.append(codeBox, playersCard);
+
+  if (state.isHost) {
+    const toggleBtn = el("button",{class:`toggle${state.includeJoker?" on":""}`, onClick:()=>send("toggle_joker")}, el("span",{class:"toggle-knob"}));
+    // Update toggle when state changes — re-render handles it
+
+    const toggleCard = el("div",{class:"card"},
+      el("div",{class:"toggle-row"},
+        el("div",{class:"toggle-info"},
+          el("span",{class:"toggle-emoji"},"🃏"),
+          el("div",{},
+            el("div",{class:"toggle-name"},"Džoker uloga"),
+            el("div",{class:"toggle-desc"},"Ućutkuje igrača jednom po rundi")
+          )
+        ),
+        toggleBtn
+      ),
+      state.errorMsg ? el("div",{class:"error"},state.errorMsg) : null,
+      btn(`🌙 Pokreni igru (${state.players.length} igrača)`,"btn-primary",()=>send("start_game"))
+    );
+    app.append(toggleCard);
+  } else {
+    app.append(el("div",{class:"card"},
+      el("p",{class:"hint",style:{textAlign:"center",padding:"8px 0"}},"⏳ Čekaj da host pokrene igru...")
+    ));
+  }
+}
+
+// ── NIGHT ──
+function renderNight(app) {
+  const [moon, stars] = starsBg();
+  app.classList.add("night-screen");
+  app.append(moon, stars);
+
+  const wrap = el("div",{style:{position:"relative",zIndex:1}});
+
+  wrap.append(el("div",{class:"phase-header"},
+    el("div",{style:{fontSize:"0.78rem",letterSpacing:"0.15em",color:"var(--muted)",textTransform:"uppercase",marginBottom:"8px"}},`Noć — Runda ${state.round}`),
+    el("div",{style:{fontSize:"3rem",lineHeight:1.2,color:state.currentRoleColor}},state.currentRoleEmoji||"🌙"),
+    el("h2",{style:{color:state.currentRoleColor}},state.currentRoleLabel ? `${state.currentRoleLabel} se budi` : "Grad spava..."),
+    el("p",{class:"hint"},state.isMyTurn ? "Tvoj red je — izaberi metu" : "Čekaj...")
+  ));
+
+  if (state.myRole) {
+    const myRoleInfo = ROLES[state.myRole];
+    wrap.append(el("div",{class:"role-card",style:{border:`1px solid ${myRoleInfo.color}33`}},
+      el("div",{style:{position:"absolute",top:0,left:0,right:0,height:"3px",background:myRoleInfo.color}}),
+      el("div",{style:{fontSize:"2rem",marginBottom:"4px"}},myRoleInfo.emoji),
+      el("div",{style:{fontFamily:"'Cinzel',serif",fontSize:"0.9rem",color:myRoleInfo.color,letterSpacing:"0.1em"}},myRoleInfo.label),
+    ));
+  }
+
+  wrap.append(playersBar(state.players, state.myId));
+
+  if (state.phase === "game_night_acting" && state.isMyTurn) {
+    const pickList = el("div",{class:"pick-list"});
+
+    if (!state.policeCheckDone) {
+      state.nightTargets.forEach(t=>{
+        const isSelected = state.selectedTarget && state.selectedTarget.id===t.id;
+        const b = btn(t.name,"pick-btn"+(isSelected?" picked":""),()=>{
+          state.selectedTarget=t;
+          state.policeResult=null;
+          render();
+        });
+        if (isSelected) { b.style.borderColor=state.currentRoleColor; b.style.color=state.currentRoleColor; }
+        pickList.append(b);
+      });
+      wrap.append(pickList);
+
+      if (state.isPolice && state.selectedTarget) {
+        wrap.append(btn(`🔍 Proveri ${state.selectedTarget.name}`,"btn-primary",()=>{
+          send("police_check",{targetId:state.selectedTarget.id});
+        },{background:ROLES.police.color}));
+      } else if (!state.isPolice && state.selectedTarget) {
+        wrap.append(btn("Potvrdi","btn-primary",()=>{
+          send("night_pick",{targetId:state.selectedTarget.id});
+          state.isMyTurn=false;
+          state.phase="game_night_wait";
+          render();
+        },{background:state.currentRoleColor}));
+      }
+    } else if (state.policeResult) {
+      const isMafia = state.policeResult.isMafia;
+      wrap.append(
+        el("div",{class:"police-confirmed",style:{background:isMafia?"rgba(192,57,43,0.15)":"rgba(39,174,96,0.12)",color:isMafia?"#c0392b":"#27ae60",border:`1px solid ${isMafia?"rgba(192,57,43,0.4)":"rgba(39,174,96,0.3)"}`}},
+          `${state.policeResult.targetName} ${isMafia?"JE 🔪 MAFIJA!":"NIJE mafija."}`
+        ),
+        btn("Potvrdi","btn-primary",()=>{
+          send("night_pick",{targetId:state.selectedTarget.id});
+          state.isMyTurn=false;
+          state.phase="game_night_wait";
+          render();
+        },{background:ROLES.police.color})
+      );
+    }
+  } else {
+    wrap.append(el("div",{class:"waiting-screen",style:{padding:"30px 0"}},
+      el("div",{class:"waiting-spinner"},"🌙"),
+      el("div",{class:"waiting-title"},state.currentRoleLabel ? `${state.currentRoleLabel} bira...` : "Grad spava..."),
+      el("div",{class:"waiting-sub"},"Čekaj da ostali završe")
+    ));
+  }
+
+  app.append(wrap);
+}
+
+// ── DAWN ──
+function renderDawn(app) {
+  const d = state.dawnData;
+  if (!d) return;
+
+  app.append(el("div",{class:"phase-header"},
+    el("div",{style:{fontSize:"3rem",marginBottom:"8px"}},"🌅"),
+    el("div",{class:"phase-tag"},"Grad se budi"),
+    el("h2",{},`Runda ${state.round} — izveštaj`)
+  ));
+
+  const events = el("div",{class:"events-card"});
+
+  if (d.killed) {
+    events.append(el("div",{class:"event-item dead"},
+      el("span",{class:"event-icon"},"💀"),
+      el("div",{},el("div",{class:"event-name"},`${d.killed.name} je ubijen!`),el("div",{class:"event-sub"},"Igrač je eliminisan."))
+    ));
+  } else if (d.savedAttempt) {
+    events.append(el("div",{class:"event-item saved"},
+      el("span",{class:"event-icon"},"💊"),
+      el("div",{},el("div",{class:"event-name"},"Pokušaj ubistva!"),el("div",{class:"event-sub"},"Neko je napadnut ali spašen."))
+    ));
+  } else {
+    events.append(el("div",{class:"event-item peace"},
+      el("span",{class:"event-icon"},"🌙"),
+      el("div",{},el("div",{class:"event-name"},"Mirna noć"),el("div",{class:"event-sub"},"Niko nije ubijen."))
+    ));
+  }
+  if (d.silenced) {
+    events.append(el("div",{class:"event-item silenced"},
+      el("span",{class:"event-icon"},"🤫"),
+      el("div",{},el("div",{class:"event-name"},`${d.silenced.name} je ućutkan!`),el("div",{class:"event-sub"},"Ne može da priča ovu rundu."))
+    ));
+  }
+  if (d.jokerTakeover) {
+    events.append(el("div",{class:"event-item takeover"},
+      el("span",{class:"event-icon"},"🃏➡️🔪"),
+      el("div",{},el("div",{class:"event-name"},`${d.jokerTakeover.name} postaje novi Mafija!`),el("div",{class:"event-sub"},"Džoker preuzima ulogu ubice."))
+    ));
+  }
+
+  app.append(events);
+  app.append(playersBar(state.players, state.myId));
+
+  if (state.isHost) {
+    const btns = el("div",{class:"dawn-btns"},
+      btn("🗳️ Glasanje","btn-secondary",()=>send("start_voting")),
+      btn("▶ Sledeća runda","btn-primary",()=>send("next_round"))
+    );
+    app.append(btns);
+  } else {
+    app.append(el("div",{class:"card"},el("p",{class:"hint",style:{textAlign:"center"}},"⏳ Čekaj odluku hosta...")));
+  }
+}
+
+// ── VOTING ──
+function renderVoting(app) {
+  app.append(el("div",{class:"phase-header"},
+    el("div",{class:"phase-tag"},"Glasanje"),
+    el("h2",{},state.currentVoterName ? `${state.currentVoterName} glasa` : "Glasanje"),
+    el("p",{class:"hint"},state.isMyVoteTurn ? "Tvoj red — izaberi koga isključuješ" : `Čekaj... glasanje je u toku`)
+  ));
+
+  app.append(playersBar(state.players, state.myId));
+
+  if (state.phase === "game_voting_acting" && state.isMyVoteTurn) {
+    const pickList = el("div",{class:"pick-list"});
+    state.voteTargets.forEach(t=>{
+      const isSelected = state.selectedVote && state.selectedVote.id===t.id;
+      const b = btn(t.name,"pick-btn"+(isSelected?" picked":""),()=>{state.selectedVote=t;render();});
+      if (isSelected) { b.style.borderColor="var(--accent)"; b.style.color="var(--accent)"; }
+      pickList.append(b);
+    });
+    app.append(pickList);
+    if (state.selectedVote) {
+      app.append(btn(`Glasam za ${state.selectedVote.name}`,"btn-primary",()=>{
+        send("cast_vote",{targetId:state.selectedVote.id});
+        state.isMyVoteTurn=false;
+        state.phase="game_voting_wait";
+        render();
+      }));
+    }
+  } else {
+    app.append(el("div",{class:"waiting-screen",style:{padding:"30px 0"}},
+      el("div",{class:"waiting-spinner"},"🗳️"),
+      el("div",{class:"waiting-title"},"Glasanje u toku..."),
+      el("div",{class:"waiting-sub"},"Čekaj dok svi ne glasaju")
+    ));
+  }
+}
+
+// ── VOTE RESULT ──
+function renderVoteResult(app) {
+  const r = state.voteResult;
+  if (!r) return;
+
+  app.append(el("div",{class:"phase-header"},
+    el("div",{class:"phase-tag"},"Rezultat glasanja"),
+    el("h2",{},"Ko je eliminisan?")
+  ));
+
+  const tallyList = el("div",{class:"tally-list"});
+  (r.tally||[]).forEach(p=>{
+    const isElim = !r.tie && r.eliminated && r.eliminated.id===p.id;
+    tallyList.append(el("div",{class:"tally-row"+(isElim?" eliminated":"")},
+      el("span",{class:"tally-name"},p.name),
+      el("span",{class:"tally-votes"},`${p.votes} glasova`)
+    ));
+  });
+  app.append(tallyList);
+
+  if (r.tie) {
+    const box = el("div",{class:"result-box tie"},
+      el("div",{},"🤝 Izjednačeno!"),
+      el("div",{class:"result-sub"},"Isti broj glasova — ponavljamo."),
+    );
+    if (state.isHost) box.append(btn("🔁 Ponovi glasanje","btn-primary",()=>send("redo_vote")));
+    else box.append(el("p",{class:"hint",style:{textAlign:"center"}},"⏳ Čekaj hosta..."));
+    app.append(box);
+    return;
+  }
+
+  const elim = r.eliminated;
+  const box = el("div",{class:"result-box"});
+
+  if (r.cityWins) {
+    box.append(
+      el("div",{class:"win-text"},"🏆 Grad je pobedio!"),
+      el("div",{class:"result-sub"},`${elim.name} (${elim.roleLabel}) je eliminisan!`),
+      el("div",{style:{fontSize:"3rem"}},elim.roleEmoji)
+    );
+    if (state.isHost) box.append(btn("🎉 Nova igra","btn-primary",()=>send("new_game")));
+    else box.append(el("p",{class:"hint",style:{textAlign:"center"}},"⏳ Čekaj hosta..."));
+  } else if (r.isMafia && r.jokerTakeover) {
+    box.append(
+      el("div",{class:"win-text",style:{fontSize:"1.1rem"}},"⚠️ Mafija eliminisana!"),
+      el("div",{class:"result-sub"},`${elim.name} eliminisan, ali...`),
+      el("div",{style:{fontSize:"2.5rem"}},"🃏➡️🔪"),
+      el("div",{class:"result-sub",style:{color:"#c9a84c",fontWeight:600}},`${r.jokerTakeover.name} postaje nova Mafija!`),
+    );
+    if (state.isHost) box.append(btn("▶ Nastavi","btn-primary",()=>{ state.round++; send("next_round"); }));
+    else box.append(el("p",{class:"hint",style:{textAlign:"center"}},"⏳ Čekaj hosta..."));
+  } else {
+    box.append(
+      el("div",{class:"fail-text"},"😢 Greška!"),
+      el("div",{class:"result-sub"},`${elim.name} (${elim.roleLabel}) nije bio mafija.`),
+      el("div",{style:{fontSize:"3rem"}},elim.roleEmoji)
+    );
+    if (state.isHost) box.append(btn("▶ Nastavi igru","btn-primary",()=>send("next_round")));
+    else box.append(el("p",{class:"hint",style:{textAlign:"center"}},"⏳ Čekaj hosta..."));
+  }
+
+  app.append(box);
+}
+
+// ── GAMEOVER ──
+function renderGameover(app) {
+  app.append(el("div",{class:"gameover-screen"},
+    el("div",{class:"gameover-emoji"},"🏆"),
+    el("div",{class:"gameover-title"},"Grad je pobedio!"),
+    el("p",{class:"gameover-sub"},"Mafija je konačno otkrivena."),
+    state.isHost
+      ? btn("🌙 Nova igra","btn-primary",()=>send("new_game"),{maxWidth:"260px"})
+      : el("p",{class:"hint",style:{textAlign:"center"}},"⏳ Čekaj hosta da pokrene novu igru...")
+  ));
+}
+
+// ── TOAST ──
+function showToast(msg, type="info") {
+  const t = document.createElement("div");
+  t.textContent = msg;
+  Object.assign(t.style,{
+    position:"fixed",bottom:"24px",left:"50%",transform:"translateX(-50%)",
+    background:type==="error"?"var(--danger)":type==="warn"?"#7f6020":"var(--surface2)",
+    color:"white",padding:"10px 20px",borderRadius:"8px",zIndex:9999,
+    fontFamily:"'Crimson Text',serif",fontSize:"0.95rem",
+    boxShadow:"0 4px 20px rgba(0,0,0,0.4)",whiteSpace:"nowrap"
+  });
+  document.body.append(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+// ── START ──
+connect();
+</script>
+</body>
+</html>
