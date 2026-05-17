@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>MAFIJA</title>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-VJWFZ6XN0V"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-VJWFZ6XN0V');
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -288,6 +296,20 @@ h2 { font-family: 'Cinzel', serif; font-size: 1.4rem; margin-bottom: 8px; }
 
 .dawn-btns { display: flex; gap: 10px; margin-top: 8px; }
 
+.role-counts-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 12px; position: relative; overflow: hidden; }
+.role-counts-card::before { content:''; position:absolute; top:0;left:0;right:0;height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,0.4),transparent); }
+.role-count-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.role-count-row:last-child { border-bottom: none; padding-bottom: 0; }
+.role-count-emoji { font-size: 1.4rem; width: 28px; text-align: center; flex-shrink: 0; }
+.role-count-info { flex: 1; }
+.role-count-name { font-family: "Cinzel",serif; font-size: 0.85rem; letter-spacing: 0.08em; }
+.role-count-desc { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+.stepper { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.stepper-btn { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; line-height: 1; }
+.stepper-btn:hover { border-color: var(--accent); color: var(--accent); }
+.stepper-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.stepper-val { font-family: "Cinzel",serif; font-size: 1.1rem; min-width: 20px; text-align: center; color: var(--accent); }
+
 .dawn-vote-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 20px; margin-bottom: 12px;
@@ -380,6 +402,8 @@ let state = {
   voteTargets: [],
   selectedVote: null,
   voteResult: null,
+  // role counts
+  roleCounts: { mafia:1, doctor:1, police:1, joker:0 },
   // dawn vote
   dawnVote: null,       // "vote" | "continue" | null
   dawnVoteCounts: {},   // playerId -> choice
@@ -411,6 +435,7 @@ function handleMessage(msg) {
       state.players = msg.players;
       state.hostId = msg.hostId;
       state.includeJoker = msg.includeJoker;
+      state.roleCounts = msg.roleCounts || state.roleCounts;
       if (state.phase === "lobby") render();
       break;
 
@@ -467,6 +492,11 @@ function handleMessage(msg) {
       state.players = msg.players;
       state.round = msg.round;
       state.dawnVoteCounts = {};
+      // normalize to arrays for backwards compat
+      if (state.dawnData.killed && !Array.isArray(state.dawnData.killed))
+        state.dawnData.killed = state.dawnData.killed ? [state.dawnData.killed] : [];
+      if (state.dawnData.silenced && !Array.isArray(state.dawnData.silenced))
+        state.dawnData.silenced = state.dawnData.silenced ? [state.dawnData.silenced] : [];
       state.phase = state.isHost ? "game_dawn_host" : "game_dawn";
       render();
       break;
@@ -742,25 +772,79 @@ function renderLobby(app) {
   app.append(codeBox, playersCard);
 
   if (state.isHost) {
-    const toggleBtn = el("button",{class:`toggle${state.includeJoker?" on":""}`, onClick:()=>send("toggle_joker")}, el("span",{class:"toggle-knob"}));
-    // Update toggle when state changes — re-render handles it
+    // Role counts card
+    const rc = state.roleCounts || {mafia:1,doctor:1,police:1,joker:0};
+    const roleDefs = [
+      {role:"mafia",  emoji:"🔪", name:"Mafija",    desc:"Ubice", min:1},
+      {role:"doctor", emoji:"💊", name:"Lekar",     desc:"Spasavaju igrače", min:0},
+      {role:"police", emoji:"🔍", name:"Policajac", desc:"Proveravaju igrače", min:0},
+      {role:"joker",  emoji:"🃏", name:"Džoker",    desc:"Ućutkuju igrače", min:0},
+    ];
 
-    const toggleCard = el("div",{class:"card"},
-      el("div",{class:"toggle-row"},
-        el("div",{class:"toggle-info"},
-          el("span",{class:"toggle-emoji"},"🃏"),
-          el("div",{},
-            el("div",{class:"toggle-name"},"Džoker uloga"),
-            el("div",{class:"toggle-desc"},"Ućutkuje igrača jednom po rundi")
-          )
+    const countsCard = el("div",{class:"role-counts-card"});
+    countsCard.append(el("div",{class:"section-label",style:{marginBottom:"8px"}},"Broj uloga"));
+
+    roleDefs.forEach(({role,emoji,name,desc,min})=>{
+      const val = rc[role]||0;
+      const row = el("div",{class:"role-count-row"});
+      const minusBtn = el("button",{class:"stepper-btn",onClick:()=>{
+        const cur = rc[role]||0;
+        if (cur <= min) return;
+        send("set_role_count",{role,count:cur-1});
+      }},  "−");
+      if ((rc[role]||0) <= min) minusBtn.disabled = true;
+      const plusBtn = el("button",{class:"stepper-btn",onClick:()=>{
+        const cur = rc[role]||0;
+        send("set_role_count",{role,count:cur+1});
+      }}, "+");
+      row.append(
+        el("span",{class:"role-count-emoji"},emoji),
+        el("div",{class:"role-count-info"},
+          el("div",{class:"role-count-name"},name),
+          el("div",{class:"role-count-desc"},desc)
         ),
-        toggleBtn
-      ),
-      state.errorMsg ? el("div",{class:"error"},state.errorMsg) : null,
-      btn(`🌙 Pokreni igru (${state.players.length} igrača)`,"btn-primary",()=>send("start_game"))
+        el("div",{class:"stepper"},
+          minusBtn,
+          el("span",{class:"stepper-val"},String(val)),
+          plusBtn
+        )
+      );
+      countsCard.append(row);
+    });
+
+    const totalSpecial = (rc.mafia||0)+(rc.doctor||0)+(rc.police||0)+(rc.joker||0);
+    countsCard.append(
+      el("div",{style:{marginTop:"12px",fontSize:"0.82rem",color:"var(--muted)",textAlign:"center"}},
+        `${totalSpecial} posebnih uloga + ${Math.max(0,state.players.length-totalSpecial)} građana`
+      )
     );
-    app.append(toggleCard);
+
+    app.append(countsCard);
+
+    const startCard = el("div",{class:"card"});
+    if (state.errorMsg) startCard.append(el("div",{class:"error"},state.errorMsg));
+    startCard.append(btn(`🌙 Pokreni igru (${state.players.length} igrača)`,"btn-primary",()=>send("start_game")));
+    app.append(startCard);
   } else {
+    // Non-host: show role counts read-only
+    const rc = state.roleCounts || {mafia:1,doctor:1,police:1,joker:0};
+    const countsCard = el("div",{class:"role-counts-card"});
+    countsCard.append(el("div",{class:"section-label",style:{marginBottom:"8px"}},"Uloge u igri"));
+    [
+      {role:"mafia",emoji:"🔪",name:"Mafija"},
+      {role:"doctor",emoji:"💊",name:"Lekar"},
+      {role:"police",emoji:"🔍",name:"Policajac"},
+      {role:"joker",emoji:"🃏",name:"Džoker"},
+    ].forEach(({role,emoji,name})=>{
+      if (!rc[role]) return;
+      const row = el("div",{class:"role-count-row"},
+        el("span",{class:"role-count-emoji"},emoji),
+        el("div",{class:"role-count-info"},el("div",{class:"role-count-name"},name)),
+        el("span",{class:"stepper-val",style:{marginRight:"4px"}},`×${rc[role]}`)
+      );
+      countsCard.append(row);
+    });
+    app.append(countsCard);
     app.append(el("div",{class:"card"},
       el("p",{class:"hint",style:{textAlign:"center",padding:"8px 0"}},"⏳ Čekaj da host pokrene igru...")
     ));
@@ -859,34 +943,45 @@ function renderDawn(app) {
 
   const events = el("div",{class:"events-card"});
 
-  if (d.killed) {
-    events.append(el("div",{class:"event-item dead"},
-      el("span",{class:"event-icon"},"💀"),
-      el("div",{},el("div",{class:"event-name"},`${d.killed.name} je ubijen!`),el("div",{class:"event-sub"},"Igrač je eliminisan."))
-    ));
-  } else if (d.savedAttempt) {
-    events.append(el("div",{class:"event-item saved"},
-      el("span",{class:"event-icon"},"💊"),
-      el("div",{},el("div",{class:"event-name"},"Pokušaj ubistva!"),el("div",{class:"event-sub"},"Neko je napadnut ali spašen."))
-    ));
-  } else {
+  const killed = d.killed || [];
+  const saved = d.saved || [];
+  const silenced = d.silenced || [];
+  const takeovers = d.jokerTakeovers || [];
+
+  if (killed.length > 0) {
+    killed.forEach(p => {
+      events.append(el("div",{class:"event-item dead"},
+        el("span",{class:"event-icon"},"💀"),
+        el("div",{},el("div",{class:"event-name"},`${p.name} je ubijen!`),el("div",{class:"event-sub"},"Igrač je eliminisan."))
+      ));
+    });
+  }
+  if (saved.length > 0) {
+    saved.forEach(p => {
+      events.append(el("div",{class:"event-item saved"},
+        el("span",{class:"event-icon"},"💊"),
+        el("div",{},el("div",{class:"event-name"},"Pokušaj ubistva!"),el("div",{class:"event-sub"},"Neko je napadnut ali spašen."))
+      ));
+    });
+  }
+  if (killed.length === 0 && saved.length === 0) {
     events.append(el("div",{class:"event-item peace"},
       el("span",{class:"event-icon"},"🌙"),
       el("div",{},el("div",{class:"event-name"},"Mirna noć"),el("div",{class:"event-sub"},"Niko nije ubijen."))
     ));
   }
-  if (d.silenced) {
+  silenced.forEach(p => {
     events.append(el("div",{class:"event-item silenced"},
       el("span",{class:"event-icon"},"🤫"),
-      el("div",{},el("div",{class:"event-name"},`${d.silenced.name} je ućutkan!`),el("div",{class:"event-sub"},"Ne može da priča ovu rundu."))
+      el("div",{},el("div",{class:"event-name"},`${p.name} je ućutkan!`),el("div",{class:"event-sub"},"Ne može da priča ovu rundu."))
     ));
-  }
-  if (d.jokerTakeover) {
+  });
+  takeovers.forEach(jt => {
     events.append(el("div",{class:"event-item takeover"},
       el("span",{class:"event-icon"},"🃏➡️🔪"),
-      el("div",{},el("div",{class:"event-name"},`${d.jokerTakeover.name} postaje novi Mafija!`),el("div",{class:"event-sub"},"Džoker preuzima ulogu ubice."))
+      el("div",{},el("div",{class:"event-name"},`${jt.to} postaje novi Mafija!`),el("div",{class:"event-sub"},`Nasledio ulogu od ${jt.from}.`))
     ));
-  }
+  });
 
   app.append(events);
   app.append(playersBar(state.players, state.myId));
