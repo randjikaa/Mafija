@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAFIJA — Narator igre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #080810;
+  --surface: #10101e;
+  --surface2: #18182e;
+  --border: #2a2a45;
+  --text: #e8e6f0;
+  --muted: #7a78a0;
+  --accent: #c9a84c;
+  --accent2: #8b5cf6;
+  --danger: #c0392b;
+  --success: #27ae60;
+  --radius: 12px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Text', Georgia, serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(120,20,20,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(60,20,100,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(201,168,76,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+#app {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── TYPOGRAPHY & BUTTONS ── */
+h1.title {
+  font-family: 'Cinzel', serif;
+  font-size: 3.2rem;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  text-shadow: 0 0 40px rgba(201,168,76,0.4), 0 0 80px rgba(201,168,76,0.15);
+  margin: 8px 0 4px;
+  position: relative;
+}
+
+h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.hint { color: var(--muted); font-size: 0.95rem; font-style: italic; }
+
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 14px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-secondary:hover { border-color: var(--accent); }
+
+.btn-ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 10px 18px;
+  cursor: pointer;
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  width: 100%;
+  transition: all 0.15s;
+  margin-top: 4px;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-icon {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.btn-icon:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  box-shadow: 0 0 40px rgba(192,57,43,0.06), 0 8px 32px rgba(0,0,0,0.4);
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent);
+}
+
+/* ── MODAL / OVERLAY ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(192,57,43,0.1);
+  position: relative;
+  overflow: hidden;
+}
+.modal::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent);
+}
+.modal::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.2), transparent);
+}
+
+/* ── HOME ── */
+.home-screen { display: flex; flex-direction: column; align-items: center; }
+
+.home-header {
+  text-align: center;
+  padding: 40px 0 32px;
+  position: relative;
+}
+.home-header::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(192,57,43,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.moon { font-size: 3rem; animation: float 4s ease-in-out infinite; display: block; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.section-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.player-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.player-input-row { display: flex; align-items: center; gap: 10px; }
+.player-num { color: var(--muted); font-size: 0.85rem; width: 18px; text-align: right; flex-shrink: 0; }
+
+.input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: 'Crimson Text', serif;
+  font-size: 1.05rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--muted); }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 20px 0;
+}
+.toggle-info { display: flex; align-items: center; gap: 12px; }
+.toggle-emoji { font-size: 1.5rem; }
+.toggle-name { font-size: 1rem; font-weight: 600; }
+.toggle-desc { font-size: 0.8rem; color: var(--muted); }
+.toggle {
+  background: var(--border);
+  border: none;
+  border-radius: 20px;
+  width: 48px;
+  height: 26px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.25s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--accent2); }
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.25s;
+  display: block;
+}
+.toggle.on .toggle-knob { transform: translateX(22px); }
+
+.error { color: var(--danger); font-size: 0.9rem; padding: 8px 0; text-align: center; }
+
+/* ── PHASE HEADER ── */
+.phase-header { text-align: center; padding: 32px 0 24px; }
+.phase-tag {
+  display: inline-block;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* ── ROLE REVEAL ── */
+.name-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.name-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 12px;
+  color: var(--text);
+  font-family: 'Crimson Text', serif;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.name-tile:hover { border-color: var(--accent); }
+.name-tile.seen { border-color: var(--success); color: var(--success); background: rgba(39,174,96,0.07); }
+
+.modal-name { font-family: 'Cinzel', serif; font-size: 1.8rem; color: var(--accent); }
+.modal-hint { color: var(--muted); font-size: 0.9rem; }
+.role-emoji-big { font-size: 3.5rem; line-height: 1.2; }
+.role-label-big { font-family: 'Cinzel', serif; font-size: 1.6rem; font-weight: 700; }
+.role-desc { color: var(--muted); font-size: 1rem; line-height: 1.6; font-style: italic; }
+
+/* ── NIGHT ── */
+.night-screen {
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(80,10,10,0.4) 0%, transparent 60%),
+    radial-gradient(ellipse at bottom, #0a0014 0%, #080810 60%);
+}
+
+.stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.stars span {
+  position: absolute;
+  color: rgba(200,190,255,0.6);
+  font-size: 0.55rem;
+  animation: twinkle 3s ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.3); }
+}
+
+.blood-moon {
+  position: fixed;
+  top: -60px;
+  right: 10%;
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle at 40% 40%, #c0392b, #7b0e0e 60%, #3a0000);
+  border-radius: 50%;
+  box-shadow: 0 0 60px rgba(192,57,43,0.5), 0 0 120px rgba(192,57,43,0.2);
+  pointer-events: none;
+  z-index: 0;
+  animation: moonpulse 6s ease-in-out infinite;
+}
+@keyframes moonpulse {
+  0%, 100% { box-shadow: 0 0 60px rgba(192,57,43,0.5), 0 0 120px rgba(192,57,43,0.2); }
+  50% { box-shadow: 0 0 80px rgba(192,57,43,0.7), 0 0 160px rgba(192,57,43,0.3); }
+}
+
+.night-round { font-size: 0.8rem; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+
+.actor-section { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 16px 0 24px; }
+.actor-name { font-family: 'Cinzel', serif; font-size: 1.2rem; color: var(--text); }
+
+/* ── PICK LIST ── */
+.pick-list { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.pick-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: var(--text);
+  font-family: 'Crimson Text', serif;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.pick-btn:hover { border-color: var(--accent); }
+.pick-btn.picked { background: rgba(201,168,76,0.08); }
+
+.police-result {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface2);
+}
+
+/* ── DAWN ── */
+.dawn-icon { font-size: 3rem; margin-bottom: 8px; }
+
+.events-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 40px rgba(192,57,43,0.05);
+  position: relative;
+  overflow: hidden;
+}
+.events-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(192,57,43,0.6), rgba(201,168,76,0.4), rgba(142,68,173,0.4));
+}
+
+.event-item { display: flex; align-items: flex-start; gap: 16px; padding: 16px; border-radius: 8px; }
+.event-item.dead { background: rgba(192,57,43,0.1); }
+.event-item.saved { background: rgba(39,174,96,0.1); }
+.event-item.peace { background: rgba(74,74,122,0.15); }
+.event-item.silenced { background: rgba(142,68,173,0.1); }
+.event-item.joker-takeover { background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.3); }
+.event-icon { font-size: 1.5rem; flex-shrink: 0; }
+.event-name { font-size: 1.05rem; font-weight: 600; margin-bottom: 2px; }
+.event-sub { font-size: 0.85rem; color: var(--muted); }
+
+.dawn-btns { display: flex; gap: 12px; }
+
+/* ── VOTING ── */
+.voter-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.voter-name { font-family: 'Cinzel', serif; font-size: 2rem; color: var(--accent); }
+.voter-pick { display: flex; flex-direction: column; gap: 16px; }
+
+.tally-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 20px;
+}
+.tally-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 8px; }
+.tally-row.eliminated { background: rgba(192,57,43,0.15); border: 1px solid rgba(192,57,43,0.3); }
+.tally-name { font-size: 1.05rem; }
+.tally-votes { color: var(--muted); font-size: 0.9rem; }
+
+.result-box {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.result-box.tie { border-color: var(--border); }
+.win-text { font-family: 'Cinzel', serif; font-size: 1.6rem; color: var(--accent); }
+.fail-text { font-family: 'Cinzel', serif; font-size: 1.6rem; color: var(--muted); }
+.result-sub { color: var(--muted); font-size: 0.95rem; }
+
+/* ── GAME OVER ── */
+.gameover-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 100vh;
+  padding: 40px 24px;
+}
+.gameover-emoji { font-size: 5rem; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+.gameover-title {
+  font-family: 'Cinzel', serif;
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--accent);
+  margin-bottom: 8px;
+  text-shadow: 0 0 30px rgba(201,168,76,0.4);
+}
+.gameover-sub { color: var(--muted); font-size: 1.1rem; font-style: italic; margin-bottom: 40px; }
+
+.hidden { display: none !important; }
+.full-w { width: 100%; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════
+const ROLES = {
+  mafia:    { emoji:"🔪", label:"Mafija",    color:"#c0392b", desc:"Ti si ubica. U svakoj rundi biraš koga ćeš da ubiješ i tokom igre moraš da se odbraniš da to nisi ti." },
+  doctor:   { emoji:"💊", label:"Lekar",     color:"#27ae60", desc:"Ti spasavaš ljude. U svakoj rundi moraš da izabereš nekog koga ćeš da sačuvaš od ubistava." },
+  police:   { emoji:"🔍", label:"Policajac", color:"#2980b9", desc:"Ti proveravaš ko je ubica. U svakoj rundi klikneš na ime nekog igrača i saznaš da li je mafija ili ne." },
+  joker:    { emoji:"🃏", label:"Džoker",    color:"#8e44ad", desc:"Ti možeš da ućutkuješ ljude. U svakoj rundi možeš da izabereš koga ćeš da ućutkaš i ta osoba ne može da priča celu tu rundu." },
+  civilian: { emoji:"👤", label:"Građanin",  color:"#7f8c8d", desc:"Ti si običan građanin. Nemaš posebne moći, ali tvoj glas na glasanju može biti presudan." },
+};
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let state = {
+  phase: "home",      // home | reveal | night | dawn | voting | gameover
+  players: [],        // [{id, name, role, alive, silenced}]
+  round: 1,
+  actions: {},        // {mafia, doctor, police, joker} — player objects
+  // reveal phase
+  seenSet: new Set(),
+  revealedIdx: null,
+  showRole: false,
+  // night phase
+  nightStep: 0,       // index into nightSteps array
+  nightSteps: [],     // ["mafia","doctor","police","joker"]
+  nightActions: {},
+  showPick: false,
+  selected: null,
+  policeConfirmed: false,
+  policeReveal: null,
+  // voting phase
+  voterIdx: 0,
+  votes: {},          // voterId -> targetId
+  showVoterName: true,
+  votingSelected: null,
+  // dawn
+  dawnKilled: null,
+  dawnSaved: false,
+  dawnSilenced: null,
+  dawnJokerTakeover: null,
+  // options
+  includeJoker: false,
+};
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function assignRoles(names, includeJoker) {
+  const roles = ["mafia","doctor","police"];
+  if (includeJoker) roles.push("joker");
+  while (roles.length < names.length) roles.push("civilian");
+  const shuffled = shuffle(roles);
+  return names.map((name,i) => ({id:i, name, role:shuffled[i], alive:true, silenced:false}));
+}
+
+function alivePlayers() { return state.players.filter(p=>p.alive); }
+
+function buildNightSteps() {
+  const steps = [];
+  if (state.players.some(p=>p.role==="mafia"&&p.alive)) steps.push("mafia");
+  if (state.players.some(p=>p.role==="doctor"&&p.alive)) steps.push("doctor");
+  if (state.players.some(p=>p.role==="police"&&p.alive)) steps.push("police");
+  if (state.players.some(p=>p.role==="joker"&&p.alive)) steps.push("joker");
+  return steps;
+}
+
+function currentNightRole() { return state.nightSteps[state.nightStep]; }
+
+function starPositions() {
+  return Array.from({length:40},(_,i)=>({
+    left:`${(i*37+i*i*3)%100}%`,
+    top:`${(i*53+i*7)%100}%`,
+    delay:`${(i*0.17)%4}s`,
+    char: i%3===0?"✦":i%3===1?"✧":"·",
+  }));
+}
+
+// ═══════════════════════════════════════════
+//  RENDER ENGINE
+// ═══════════════════════════════════════════
+function render() {
+  const app = document.getElementById("app");
+  app.className = "";
+  app.innerHTML = "";
+
+  if (state.phase==="home")    renderHome(app);
+  if (state.phase==="reveal")  renderReveal(app);
+  if (state.phase==="night")   renderNight(app);
+  if (state.phase==="dawn")    renderDawn(app);
+  if (state.phase==="voting")  renderVoting(app);
+  if (state.phase==="gameover") renderGameover(app);
+}
+
+function el(tag, attrs={}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs)) {
+    if (k==="class") e.className=v;
+    else if (k==="style") Object.assign(e.style, v);
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else e.setAttribute(k,v);
+  }
+  for (const child of children) {
+    if (child==null||child===false) continue;
+    if (typeof child==="string"||typeof child==="number") e.append(document.createTextNode(String(child)));
+    else e.append(child);
+  }
+  return e;
+}
+
+function btn(text, cls, onClick, style={}) {
+  const b = el("button", {class:cls, style, onClick});
+  b.innerHTML = text;
+  return b;
+}
+
+// ═══════════════════════════════════════════
+//  HOME
+// ═══════════════════════════════════════════
+function renderHome(app) {
+  app.classList.add("home-screen");
+
+  const header = el("div",{class:"home-header"},
+    el("span",{class:"moon"},"🌙"),
+    el("h1",{class:"title"},"MAFIJA"),
+    el("p",{class:"subtitle"},"Narator igre")
+  );
+
+  const playerList = el("div",{class:"player-list"});
+
+  function refreshList() {
+    playerList.innerHTML = "";
+    // Read current values from inputs if they exist
+    state.playerNames = state.playerNames || [""];
+    state.playerNames.forEach((name,i) => {
+      const row = el("div",{class:"player-input-row"});
+      const num = el("span",{class:"player-num"},String(i+1));
+      const inp = el("input",{class:"input", placeholder:`Igrač ${i+1}`, value:name});
+      inp.addEventListener("input", e => { state.playerNames[i] = e.target.value; });
+      inp.addEventListener("keydown", e => { if(e.key==="Enter"){ state.playerNames.push(""); refreshList(); }});
+      row.append(num, inp);
+      if (state.playerNames.length > 1) {
+        const rm = btn("✕","btn-icon", ()=>{ state.playerNames.splice(i,1); refreshList(); });
+        row.append(rm);
+      }
+      playerList.append(row);
+    });
+  }
+
+  state.playerNames = state.playerNames && state.playerNames.length ? state.playerNames : [""];
+  state.includeJoker = state.includeJoker || false;
+  refreshList();
+
+  const addBtn = btn("+ Dodaj igrača","btn-ghost full-w", ()=>{ state.playerNames.push(""); refreshList(); });
+
+  // Toggle
+  const toggleBtn = el("button",{class:`toggle${state.includeJoker?" on":""}`, onClick:()=>{
+    state.includeJoker = !state.includeJoker;
+    toggleBtn.className = `toggle${state.includeJoker?" on":""}`;
+  }}, el("span",{class:"toggle-knob"}));
+
+  const toggleRow = el("div",{class:"toggle-row"},
+    el("div",{class:"toggle-info"},
+      el("span",{class:"toggle-emoji"},"🃏"),
+      el("div",{},
+        el("div",{class:"toggle-name"},"Džoker uloga"),
+        el("div",{class:"toggle-desc"},"Ućutkuje igrača jednom po rundi")
+      )
+    ),
+    toggleBtn
+  );
+
+  const errDiv = el("div",{class:"error", style:{display:"none"}});
+
+  const startBtn = btn("🌙 Kreni","btn-primary", ()=>{
+    const names = state.playerNames.map(n=>n.trim()).filter(Boolean);
+    const unique = [...new Set(names)];
+    const min = state.includeJoker ? 4 : 3;
+    if (unique.length < min) {
+      errDiv.style.display="block";
+      errDiv.textContent = `Potrebno je najmanje ${min} igrača (${state.includeJoker?"mafija, lekar, policajac, džoker":"mafija, lekar, policajac"}).`;
+      return;
+    }
+    if (unique.length !== names.length) { errDiv.style.display="block"; errDiv.textContent="Sva imena moraju biti jedinstvena."; return; }
+    state.players = assignRoles(unique, state.includeJoker);
+    state.seenSet = new Set();
+    state.revealedIdx = null;
+    state.showRole = false;
+    state.round = 1;
+    state.phase = "reveal";
+    state.playerNames = null;
+    render();
+  });
+
+  const card = el("div",{class:"card"},
+    el("h2",{class:"section-label"},"Igrači"),
+    playerList, addBtn, toggleRow, errDiv, startBtn
+  );
+
+  app.append(header, card);
+}
+
+// ═══════════════════════════════════════════
+//  REVEAL
+// ═══════════════════════════════════════════
+function renderReveal(app) {
+  const header = el("div",{class:"phase-header"},
+    el("div",{class:"phase-tag"},"Podela uloga"),
+    el("h2",{},"Svako neka klikne na svoje ime"),
+    el("p",{class:"hint"},"Pazi da ostali ne vide tvoju ulogu!")
+  );
+
+  const grid = el("div",{class:"name-grid"});
+  state.players.forEach((p,i)=>{
+    const isSeen = state.seenSet.has(i);
+    const tile = btn(
+      (isSeen?"✓ ":"? ")+p.name,
+      "name-tile"+(isSeen?" seen":""),
+      ()=>{ state.revealedIdx=i; state.showRole=false; render(); }
+    );
+    grid.append(tile);
+  });
+
+  const continueBtn = state.seenSet.size===state.players.length
+    ? btn("Grad zaspi →","btn-primary",()=>{ state.phase="night"; state.nightSteps=buildNightSteps(); state.nightStep=0; state.nightActions={}; render(); })
+    : null;
+
+  app.append(header, grid);
+  if (continueBtn) app.append(continueBtn);
+
+  // Modal
+  if (state.revealedIdx !== null) {
+    const p = state.players[state.revealedIdx];
+    const role = ROLES[p.role];
+    const modal = el("div",{class:"modal"});
+
+    if (!state.showRole) {
+      modal.append(
+        el("div",{class:"modal-name"},p.name),
+        el("p",{class:"modal-hint"},"Samo ti gledaj ekran!"),
+        btn("Otkrij ulogu","btn-primary",()=>{ state.showRole=true; render(); })
+      );
+    } else {
+      modal.append(
+        el("div",{class:"role-emoji-big",style:{color:role.color}},role.emoji),
+        el("div",{class:"role-label-big",style:{color:role.color}},role.label),
+        el("div",{class:"role-desc"},role.desc),
+        btn("Zatvori","btn-ghost",()=>{
+          state.seenSet.add(state.revealedIdx);
+          state.revealedIdx=null;
+          state.showRole=false;
+          render();
+        })
+      );
+    }
+
+    const overlay = el("div",{class:"overlay"}, modal);
+    app.append(overlay);
+  }
+}
+
+// ═══════════════════════════════════════════
+//  NIGHT
+// ═══════════════════════════════════════════
+function renderNight(app) {
+  app.classList.add("night-screen");
+
+  // Blood moon + stars
+  const moon = el("div",{class:"blood-moon"});
+  const starsDiv = el("div",{class:"stars"});
+  starPositions().forEach(s=>{
+    const span = el("span",{style:{left:s.left,top:s.top,animationDelay:s.delay}},s.char);
+    starsDiv.append(span);
+  });
+  app.append(moon, starsDiv);
+
+  const role = currentNightRole();
+  if (!role) {
+    // All steps done — go to dawn
+    state.phase="dawn";
+    computeDawn();
+    render();
+    return;
+  }
+
+  const roleInfo = ROLES[role];
+  const actingPlayers = state.players.filter(p=>p.role===role&&p.alive);
+  const alive = alivePlayers();
+
+  const titles = {
+    mafia:  {title:"Mafija se budi",  sub:"Izaberite koga ćete ubiti ove noći"},
+    doctor: {title:"Lekar se budi",   sub:"Izaberite koga ćete spasiti ove noći"},
+    police: {title:"Policajac se budi", sub:"Izaberite koga ćete proveriti"},
+    joker:  {title:"Džoker se budi",  sub:"Izaberite koga ćete ućutkati ove noći"},
+  };
+  const info = titles[role];
+
+  const header = el("div",{class:"phase-header",style:{position:"relative",zIndex:1}},
+    el("div",{class:"night-round"},`Noć — Runda ${state.round}`),
+    el("div",{class:"role-emoji-big",style:{color:roleInfo.color}},roleInfo.emoji),
+    el("h2",{style:{color:roleInfo.color}},info.title),
+    el("p",{class:"hint"},info.sub),
+    el("p",{class:"hint",style:{fontSize:"0.8rem",marginTop:"4px"}},"Ostali igrači neka okrenu pogled!")
+  );
+
+  const actorSection = el("div",{class:"actor-section",style:{position:"relative",zIndex:1}},
+    ...actingPlayers.map(p=>el("div",{class:"actor-name"},p.name))
+  );
+
+  const pickBtn = btn("Izaberi metu","btn-primary",()=>{ state.showPick=true; state.selected=null; state.policeConfirmed=false; state.policeReveal=null; render(); },{background:roleInfo.color,position:"relative",zIndex:1});
+
+  app.append(header, actorSection, pickBtn);
+
+  // Pick modal
+  if (state.showPick) {
+    const filtered = alive.filter(p=>{
+      if (role==="mafia") return p.role!=="mafia";
+      return !actingPlayers.some(a=>a.id===p.id);
+    });
+
+    const pickList = el("div",{class:"pick-list"});
+    filtered.forEach(p=>{
+      const isSelected = state.selected && state.selected.id===p.id;
+      const b = btn(p.name,"pick-btn"+(isSelected?" picked":""),()=>{
+        state.selected=p;
+        state.policeConfirmed=false;
+        state.policeReveal=null;
+        render();
+      });
+      if (isSelected) { b.style.borderColor=roleInfo.color; b.style.color=roleInfo.color; }
+      pickList.append(b);
+    });
+
+    const modal = el("div",{class:"modal"},
+      el("h3",{style:{color:roleInfo.color}},info.title),
+      el("p",{class:"hint"},info.sub),
+      pickList
+    );
+
+    // Police flow
+    if (role==="police") {
+      if (state.selected && !state.policeConfirmed) {
+        modal.append(btn(`🔍 Proveri ${state.selected.name}`,"btn-primary",()=>{
+          state.policeReveal = state.selected.role==="mafia";
+          state.policeConfirmed = true;
+          render();
+        },{background:ROLES.police.color}));
+      }
+      if (state.policeConfirmed && state.policeReveal!==null) {
+        modal.append(
+          el("div",{class:"police-result",style:{color:state.policeReveal?"#c0392b":"#27ae60"}},
+            `${state.selected.name} ${state.policeReveal?"JE 🔪 MAFIJA!":"NIJE mafija."}`
+          ),
+          btn("Potvrdi","btn-primary",()=>confirmNightPick(role),{background:roleInfo.color})
+        );
+      }
+    } else if (state.selected) {
+      modal.append(btn("Potvrdi","btn-primary",()=>confirmNightPick(role),{background:roleInfo.color}));
+    }
+
+    app.append(el("div",{class:"overlay"},modal));
+  }
+}
+
+function confirmNightPick(role) {
+  state.nightActions[role] = state.selected;
+  state.showPick = false;
+  state.selected = null;
+  state.policeConfirmed = false;
+  state.policeReveal = null;
+  state.nightStep++;
+
+  if (state.nightStep >= state.nightSteps.length) {
+    state.actions = state.nightActions;
+    state.phase = "dawn";
+    computeDawn();
+  }
+  render();
+}
+
+function computeDawn() {
+  const mafia  = state.actions.mafia  || null;
+  const doctor = state.actions.doctor || null;
+  const joker  = state.actions.joker  || null;
+
+  const killed = mafia && (!doctor || doctor.id!==mafia.id) ? mafia : null;
+  const savedAttempt = mafia && doctor && doctor.id===mafia.id;
+
+  state.dawnKilled   = killed;
+  state.dawnSaved    = savedAttempt;
+  state.dawnSilenced = joker;
+
+  // Joker takeover if killed player is mafia
+  const killedIsMafia = killed && killed.role==="mafia";
+  const livingJoker = killedIsMafia
+    ? state.players.find(p=>p.role==="joker"&&p.alive&&p.id!==killed.id)
+    : null;
+  state.dawnJokerTakeover = livingJoker || null;
+
+  // Apply changes to players
+  state.players = state.players.map(p=>{
+    if (killed && p.id===killed.id) return {...p, alive:false};
+    if (livingJoker && p.id===livingJoker.id) return {...p, role:"mafia", silenced:false};
+    if (joker && p.id===joker.id) return {...p, silenced:true};
+    return {...p, silenced:false};
+  });
+}
+
+// ═══════════════════════════════════════════
+//  DAWN
+// ═══════════════════════════════════════════
+function renderDawn(app) {
+  const header = el("div",{class:"phase-header"},
+    el("div",{class:"dawn-icon"},"🌅"),
+    el("div",{class:"phase-tag"},"Grad se budi"),
+    el("h2",{},`Runda ${state.round} — izveštaj`)
+  );
+
+  const eventsCard = el("div",{class:"events-card"});
+
+  if (state.dawnKilled) {
+    eventsCard.append(el("div",{class:"event-item dead"},
+      el("span",{class:"event-icon"},"💀"),
+      el("div",{},
+        el("div",{class:"event-name"},`${state.dawnKilled.name} je ubijen!`),
+        el("div",{class:"event-sub"},"Igrač je eliminisan iz igre.")
+      )
+    ));
+  } else if (state.dawnSaved) {
+    eventsCard.append(el("div",{class:"event-item saved"},
+      el("span",{class:"event-icon"},"💊"),
+      el("div",{},
+        el("div",{class:"event-name"},"Pokušaj ubistva!"),
+        el("div",{class:"event-sub"},"Neko je napadnut ali spašen od lekara.")
+      )
+    ));
+  } else {
+    eventsCard.append(el("div",{class:"event-item peace"},
+      el("span",{class:"event-icon"},"🌙"),
+      el("div",{},
+        el("div",{class:"event-name"},"Mirna noć"),
+        el("div",{class:"event-sub"},"Niko nije ubijen ove noći.")
+      )
+    ));
+  }
+
+  if (state.dawnSilenced) {
+    eventsCard.append(el("div",{class:"event-item silenced"},
+      el("span",{class:"event-icon"},"🤫"),
+      el("div",{},
+        el("div",{class:"event-name"},`${state.dawnSilenced.name} je ućutkan!`),
+        el("div",{class:"event-sub"},"Ova osoba ne može da priča ovu rundu.")
+      )
+    ));
+  }
+
+  if (state.dawnJokerTakeover) {
+    eventsCard.append(el("div",{class:"event-item joker-takeover"},
+      el("span",{class:"event-icon"},"🃏➡️🔪"),
+      el("div",{},
+        el("div",{class:"event-name"},`${state.dawnJokerTakeover.name} postaje novi Mafija!`),
+        el("div",{class:"event-sub"},"Džoker preuzima ulogu ubice jer je originalna mafija mrtva.")
+      )
+    ));
+  }
+
+  const voteBtn = btn("🗳️ Glasanje","btn-secondary",()=>{
+    state.phase="voting";
+    state.voterIdx=0;
+    state.votes={};
+    state.showVoterName=true;
+    state.votingSelected=null;
+    render();
+  });
+
+  const nextBtn = btn("▶ Sledeća runda","btn-primary",()=>{
+    state.round++;
+    state.nightSteps=buildNightSteps();
+    state.nightStep=0;
+    state.nightActions={};
+    state.showPick=false;
+    state.selected=null;
+    state.phase="night";
+    render();
+  });
+
+  const btns = el("div",{class:"dawn-btns"},voteBtn,nextBtn);
+  app.append(header, eventsCard, btns);
+}
+
+// ═══════════════════════════════════════════
+//  VOTING
+// ═══════════════════════════════════════════
+function renderVoting(app) {
+  const alive = alivePlayers();
+
+  // Results phase
+  if (state.voterIdx >= alive.length) {
+    renderVotingResults(app, alive);
+    return;
+  }
+
+  const currentVoter = alive[state.voterIdx];
+
+  const header = el("div",{class:"phase-header"},
+    el("div",{class:"phase-tag"},"Glasanje"),
+    el("h2",{},`Igrač ${state.voterIdx+1} od ${alive.length}`)
+  );
+  app.append(header);
+
+  if (state.showVoterName) {
+    const card = el("div",{class:"voter-card"},
+      el("div",{class:"voter-name"},currentVoter.name),
+      el("p",{class:"hint"},"Klikni kada si spreman/a da glasaš"),
+      btn("Glasam","btn-primary",()=>{ state.showVoterName=false; render(); })
+    );
+    app.append(card);
+  } else {
+    const pickList = el("div",{class:"pick-list"});
+    alive.filter(p=>p.id!==currentVoter.id).forEach(p=>{
+      const isSelected = state.votingSelected && state.votingSelected.id===p.id;
+      const b = btn(p.name,"pick-btn"+(isSelected?" picked":""),()=>{ state.votingSelected=p; render(); });
+      if (isSelected) { b.style.borderColor="var(--accent)"; b.style.color="var(--accent)"; }
+      pickList.append(b);
+    });
+
+    const confirmBtn = state.votingSelected
+      ? btn(`Potvrdi glas za ${state.votingSelected.name}`,"btn-primary",()=>{
+          state.votes[currentVoter.id] = state.votingSelected.id;
+          state.votingSelected=null;
+          state.showVoterName=true;
+          state.voterIdx++;
+          render();
+        })
+      : null;
+
+    const wrap = el("div",{class:"voter-pick"},
+      el("p",{class:"hint"},`${currentVoter.name}, za koga glasaš?`),
+      pickList
+    );
+    if (confirmBtn) wrap.append(confirmBtn);
+    app.append(wrap);
+  }
+}
+
+function renderVotingResults(app, alive) {
+  const tally = {};
+  Object.values(state.votes).forEach(tid=>{ tally[tid]=(tally[tid]||0)+1; });
+
+  const max = Math.max(...Object.values(tally));
+  const topIds = Object.keys(tally).filter(id=>tally[id]===max).map(Number);
+  const isTie = topIds.length > 1;
+  const eliminated = isTie ? null : state.players.find(p=>p.id===topIds[0]);
+
+  const header = el("div",{class:"phase-header"},
+    el("div",{class:"phase-tag"},"Rezultat glasanja"),
+    el("h2",{},"Ko je eliminisan?")
+  );
+
+  const tallyList = el("div",{class:"tally-list"});
+  alive.forEach(p=>{
+    const isElim = !isTie && eliminated && eliminated.id===p.id;
+    const row = el("div",{class:"tally-row"+(isElim?" eliminated":"")},
+      el("span",{class:"tally-name"},p.name),
+      el("span",{class:"tally-votes"},`${tally[p.id]||0} glasova`)
+    );
+    tallyList.append(row);
+  });
+
+  app.append(header, tallyList);
+
+  if (isTie) {
+    const tiedNames = topIds.map(id=>state.players.find(p=>p.id===id).name).join(" i ");
+    const box = el("div",{class:"result-box tie"},
+      el("div",{},"🤝 Izjednačeno!"),
+      el("div",{class:"result-sub"},`${tiedNames} imaju isti broj glasova.`),
+      btn("🔁 Ponovi glasanje","btn-primary",()=>{
+        state.voterIdx=0; state.votes={}; state.showVoterName=true; state.votingSelected=null;
+        render();
+      })
+    );
+    app.append(box);
+    return;
+  }
+
+  // Definite result
+  const isMafia = eliminated.role==="mafia";
+  const livingJokerAfter = isMafia
+    ? state.players.find(p=>p.role==="joker"&&p.alive&&p.id!==eliminated.id)
+    : null;
+
+  const box = el("div",{class:"result-box"});
+
+  if (isMafia && livingJokerAfter) {
+    box.append(
+      el("div",{class:"win-text",style:{fontSize:"1.2rem"}},"⚠️ Mafija eliminisana!"),
+      el("div",{class:"result-sub"},`${eliminated.name} (Mafija) je eliminisan, ali...`),
+      el("div",{class:"role-emoji-big"},"🃏➡️🔪"),
+      el("div",{class:"result-sub",style:{color:"#c9a84c",fontWeight:600}},`${livingJokerAfter.name} postaje nova Mafija!`),
+      el("div",{class:"result-sub"},"Igra se nastavlja."),
+      btn("▶ Nastavi igru","btn-primary",()=>doVotingDone(eliminated, true))
+    );
+  } else if (isMafia) {
+    box.append(
+      el("div",{class:"win-text"},"🏆 Grad je pobedio!"),
+      el("div",{class:"result-sub"},`${eliminated.name} (${ROLES[eliminated.role].label}) je eliminisan!`),
+      el("div",{class:"role-emoji-big",style:{color:ROLES[eliminated.role].color}},ROLES[eliminated.role].emoji),
+      btn("🎉 Igra završena","btn-primary",()=>doVotingDone(eliminated, true))
+    );
+  } else {
+    box.append(
+      el("div",{class:"fail-text"},"😢 Greška!"),
+      el("div",{class:"result-sub"},`${eliminated.name} (${ROLES[eliminated.role].label}) je eliminisan — nije bio mafija.`),
+      el("div",{class:"role-emoji-big",style:{color:ROLES[eliminated.role].color}},ROLES[eliminated.role].emoji),
+      btn("▶ Nastavi igru","btn-primary",()=>doVotingDone(eliminated, false))
+    );
+  }
+
+  app.append(box);
+}
+
+function doVotingDone(eliminated, mafiaEliminated) {
+  // Remove eliminated player
+  state.players = state.players.map(p=>p.id===eliminated.id?{...p,alive:false}:p);
+
+  if (mafiaEliminated) {
+    const livingJoker = state.players.find(p=>p.role==="joker"&&p.alive);
+    if (livingJoker) {
+      state.players = state.players.map(p=>p.id===livingJoker.id?{...p,role:"mafia"}:p);
+      state.round++;
+      state.nightSteps=buildNightSteps();
+      state.nightStep=0;
+      state.nightActions={};
+      state.showPick=false;
+      state.phase="night";
+    } else {
+      state.phase="gameover";
+    }
+  } else {
+    state.round++;
+    state.nightSteps=buildNightSteps();
+    state.nightStep=0;
+    state.nightActions={};
+    state.showPick=false;
+    state.phase="night";
+  }
+  render();
+}
+
+// ═══════════════════════════════════════════
+//  GAME OVER
+// ═══════════════════════════════════════════
+function renderGameover(app) {
+  app.classList.add("gameover-screen");
+  const b = btn("🌙 Nova igra","btn-primary",()=>{
+    state={phase:"home",players:[],round:1,actions:{},seenSet:new Set(),revealedIdx:null,showRole:false,nightStep:0,nightSteps:[],nightActions:{},showPick:false,selected:null,policeConfirmed:false,policeReveal:null,voterIdx:0,votes:{},showVoterName:true,votingSelected:null,dawnKilled:null,dawnSaved:false,dawnSilenced:null,dawnJokerTakeover:null,includeJoker:false};
+    render();
+  });
+  b.style.maxWidth="280px";
+  app.append(
+    el("div",{class:"gameover-emoji"},"🏆"),
+    el("div",{class:"gameover-title"},"Grad je pobedio!"),
+    el("p",{class:"gameover-sub"},"Mafija je konačno otkrivena i eliminisana."),
+    b
+  );
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
