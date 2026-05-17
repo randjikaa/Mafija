@@ -299,9 +299,7 @@ h2 { font-family: 'Cinzel', serif; font-size: 1.4rem; margin-bottom: 8px; }
 // ═══════════════════════════════════════
 //  WEBSOCKET
 // ═══════════════════════════════════════
-const WS_URL = location.protocol === "https:"
-  ? `wss://${location.host}`
-  : `ws://${location.host}`;
+const WS_URL = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host || window.location.hostname}`;
 
 let ws = null;
 let reconnectTimer = null;
@@ -575,11 +573,63 @@ function starsBg() {
 }
 
 // ── CONNECTING ──
+let _countdownTimer = null;
+
 function renderConnecting(app) {
+  const countdownEl = el("div",{class:"waiting-sub"});
+  const titleEl = el("div",{class:"waiting-title"},"Povezivanje...");
+
+  let seconds = 30;
+  function tick() {
+    if (state.phase !== "connecting") { clearInterval(_countdownTimer); return; }
+    countdownEl.textContent = seconds > 0
+      ? `Server se budi... ⏳ ${seconds}s`
+      : "Još malo, skoro je gotovo...";
+    if (seconds > 0) seconds--;
+  }
+  tick();
+  clearInterval(_countdownTimer);
+  _countdownTimer = setInterval(tick, 1000);
+
+  // Countdown ring
+  const ring = el("div",{style:{
+    position:"relative",width:"80px",height:"80px",margin:"0 auto 16px"
+  }});
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("viewBox","0 0 80 80");
+  svg.style.cssText="width:80px;height:80px;transform:rotate(-90deg)";
+  const bg = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  bg.setAttribute("cx","40"); bg.setAttribute("cy","40"); bg.setAttribute("r","34");
+  bg.setAttribute("fill","none"); bg.setAttribute("stroke","#2a2a45"); bg.setAttribute("stroke-width","4");
+  const arc = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  arc.setAttribute("cx","40"); arc.setAttribute("cy","40"); arc.setAttribute("r","34");
+  arc.setAttribute("fill","none"); arc.setAttribute("stroke","#c9a84c"); arc.setAttribute("stroke-width","4");
+  const circ = 2 * Math.PI * 34;
+  arc.setAttribute("stroke-dasharray", circ);
+  arc.setAttribute("stroke-dashoffset", "0");
+  arc.setAttribute("stroke-linecap","round");
+  svg.append(bg, arc);
+  const moonLabel = el("div",{style:{
+    position:"absolute",top:"50%",left:"50%",
+    transform:"translate(-50%,-50%)",fontSize:"1.8rem",lineHeight:1
+  }},"🌙");
+  ring.append(svg, moonLabel);
+
+  let arcSeconds = 30;
+  function updateArc() {
+    if (state.phase !== "connecting") { clearInterval(_arcTimer); return; }
+    const progress = arcSeconds / 30;
+    arc.setAttribute("stroke-dashoffset", circ * (1 - progress));
+    if (arcSeconds > 0) arcSeconds--;
+  }
+  updateArc();
+  const _arcTimer = setInterval(updateArc, 1000);
+
   app.append(el("div",{class:"waiting-screen"},
-    el("div",{class:"waiting-spinner"},"🌙"),
-    el("div",{class:"waiting-title"},"Povezivanje..."),
-    el("div",{class:"waiting-sub"},"Čekaj trenutak")
+    ring,
+    titleEl,
+    countdownEl,
+    el("div",{class:"waiting-sub",style:{marginTop:"8px",fontSize:"0.8rem",opacity:0.6}},"Besplatni server se budi iz sna 😴")
   ));
 }
 
