@@ -288,6 +288,24 @@ h2 { font-family: 'Cinzel', serif; font-size: 1.4rem; margin-bottom: 8px; }
 
 .dawn-btns { display: flex; gap: 10px; margin-top: 8px; }
 
+.dawn-vote-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 12px;
+}
+.dawn-vote-title { font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 14px; text-align: center; }
+.dawn-vote-btns { display: flex; gap: 10px; }
+.vote-choice-btn {
+  flex: 1; border-radius: 10px; padding: 14px 10px; font-family: 'Cinzel', serif;
+  font-size: 0.85rem; cursor: pointer; transition: all 0.2s; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--muted); text-align: center;
+}
+.vote-choice-btn.selected-vote { background: rgba(192,57,43,0.15); border-color: #c0392b; color: #c0392b; }
+.vote-choice-btn.selected-continue { background: rgba(201,168,76,0.12); border-color: var(--accent); color: var(--accent); }
+.dawn-vote-tally { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.dawn-tally-chip { font-size: 0.78rem; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border); color: var(--muted); background: var(--surface2); }
+.dawn-tally-chip.v { border-color: rgba(192,57,43,0.4); color: #c0392b; background: rgba(192,57,43,0.08); }
+.dawn-tally-chip.c { border-color: rgba(201,168,76,0.4); color: var(--accent); background: rgba(201,168,76,0.08); }
+
 .divider { height: 1px; background: var(--border); margin: 16px 0; }
 
 .police-confirmed { font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 700; padding: 14px; border-radius: 8px; margin: 8px 0; text-align: center; }
@@ -362,8 +380,13 @@ let state = {
   voteTargets: [],
   selectedVote: null,
   voteResult: null,
+  // dawn vote
+  dawnVote: null,       // "vote" | "continue" | null
+  dawnVoteCounts: {},   // playerId -> choice
+  dawnVoteResult: null, // "vote" | "continue"
   // ui
   nameInput: "",
+  joinNameInput: "",
   codeInput: "",
   errorMsg: "",
 };
@@ -443,6 +466,7 @@ function handleMessage(msg) {
       state.dawnData = msg;
       state.players = msg.players;
       state.round = msg.round;
+      state.dawnVoteCounts = {};
       state.phase = state.isHost ? "game_dawn_host" : "game_dawn";
       render();
       break;
@@ -484,6 +508,11 @@ function handleMessage(msg) {
       state.players = msg.players || state.players;
       state.phase = "game_vote_result";
       render();
+      break;
+
+    case "dawn_vote_update":
+      state.dawnVoteCounts = msg.votes;
+      if (state.phase === "game_dawn" || state.phase === "game_dawn_host") render();
       break;
 
     case "player_left":
@@ -647,22 +676,28 @@ function renderHome(app) {
     btn("🌙 Napravi sobu","btn-primary",()=>{
       const name = state.nameInput.trim();
       if (!name) { state.errorMsg="Unesite ime."; render(); return; }
+      state.myName = name;
       send("create_room",{name, includeJoker:false});
     })
   );
 
   // JOIN
+  const joinNameInp = el("input",{class:"input",placeholder:"Tvoje ime",value:state.joinNameInput||""});
+  joinNameInp.addEventListener("input",e=>{state.joinNameInput=e.target.value;state.errorMsg="";errDiv.style.display="none";});
+
   const codeInp = el("input",{class:"input input-code",placeholder:"XXXX",maxlength:"4",value:state.codeInput});
   codeInp.addEventListener("input",e=>{state.codeInput=e.target.value.toUpperCase().slice(0,4);codeInp.value=state.codeInput;state.errorMsg="";errDiv.style.display="none";});
 
   const joinCard = el("div",{class:"card"},
     el("div",{class:"section-label"},"Pridruži se"),
+    joinNameInp,
     codeInp,
     btn("Pridruži se →","btn-primary",()=>{
-      const name = state.nameInput.trim();
+      const name = (state.joinNameInput||"").trim();
       const code = state.codeInput.trim();
-      if (!name) { state.errorMsg="Unesite ime pre pridruživanja."; render(); return; }
-      if (code.length < 4) { state.errorMsg="Unesite 4-slovni kod sobe."; render(); return; }
+      if (!name) { state.errorMsg="Unesite ime."; errDiv.style.display="block"; return; }
+      if (code.length < 4) { state.errorMsg="Unesite 4-slovni kod sobe."; errDiv.style.display="block"; return; }
+      state.myName = name;
       send("join_room",{name,code});
     })
   );
@@ -856,15 +891,86 @@ function renderDawn(app) {
   app.append(events);
   app.append(playersBar(state.players, state.myId));
 
-  if (state.isHost) {
-    const btns = el("div",{class:"dawn-btns"},
-      btn("🗳️ Glasanje","btn-secondary",()=>send("start_voting")),
-      btn("▶ Sledeća runda","btn-primary",()=>send("next_round"))
-    );
-    app.append(btns);
+  // Dawn vote — all players vote glasanje vs sledeća runda
+  const votes = state.dawnVoteCounts || {};
+  const myVote = votes[state.myId];
+  const voteCount = Object.values(votes).filter(v=>v==="vote").length;
+  const continueCount = Object.values(votes).filter(v=>v==="continue").length;
+  const totalAlive = state.players.filter(p=>p.alive).length;
+  const allVoted = (voteCount + continueCount) >= totalAlive;
+
+  const voteCard = el("div",{class:"dawn-vote-card"});
+  voteCard.append(el("div",{class:"dawn-vote-title"},"Šta radimo?"));
+
+  if (!myVote) {
+    const btnVote = el("button",{class:"vote-choice-btn",onClick:()=>{
+      state.dawnVoteCounts = {...(state.dawnVoteCounts||{}), [state.myId]:"vote"};
+      send("dawn_vote",{choice:"vote"});
+      render();
+    }},"🗳️ Glasanje");
+    const btnCont = el("button",{class:"vote-choice-btn",onClick:()=>{
+      state.dawnVoteCounts = {...(state.dawnVoteCounts||{}), [state.myId]:"continue"};
+      send("dawn_vote",{choice:"continue"});
+      render();
+    }},"▶ Sledeća runda");
+    voteCard.append(el("div",{class:"dawn-vote-btns"},btnVote,btnCont));
   } else {
-    app.append(el("div",{class:"card"},el("p",{class:"hint",style:{textAlign:"center"}},"⏳ Čekaj odluku hosta...")));
+    const btnVote = el("button",{class:"vote-choice-btn"+(myVote==="vote"?" selected-vote":""),onClick:()=>{
+      state.dawnVoteCounts = {...(state.dawnVoteCounts||{}), [state.myId]:"vote"};
+      send("dawn_vote",{choice:"vote"});
+      render();
+    }},"🗳️ Glasanje");
+    const btnCont = el("button",{class:"vote-choice-btn"+(myVote==="continue"?" selected-continue":""),onClick:()=>{
+      state.dawnVoteCounts = {...(state.dawnVoteCounts||{}), [state.myId]:"continue"};
+      send("dawn_vote",{choice:"continue"});
+      render();
+    }},"▶ Sledeća runda");
+    voteCard.append(el("div",{class:"dawn-vote-btns"},btnVote,btnCont));
   }
+
+  // Show tally
+  const tally = el("div",{class:"dawn-vote-tally"});
+  state.players.filter(p=>p.alive).forEach(p=>{
+    const v = votes[p.id];
+    const chip = el("span",{class:"dawn-tally-chip"+(v==="vote"?" v":v==="continue"?" c":"")},
+      (v==="vote"?"🗳️ ":v==="continue"?"▶ ":"⏳ ") + p.name + (p.id===state.myId?" (ti)":"")
+    );
+    tally.append(chip);
+  });
+  voteCard.append(tally);
+
+  if (allVoted) {
+    const winner = voteCount > continueCount ? "vote" : continueCount > voteCount ? "continue" : "tie";
+    const resultEl = el("div",{style:{textAlign:"center",marginTop:"12px",fontFamily:"'Cinzel',serif",fontSize:"0.9rem",color:winner==="vote"?"#c0392b":winner==="continue"?"var(--accent)":"var(--muted)"}},
+      winner==="vote" ? `🗳️ Glasanje! (${voteCount} vs ${continueCount})` :
+      winner==="continue" ? `▶ Sledeća runda! (${continueCount} vs ${voteCount})` :
+      `🤝 Izjednačeno (${voteCount}:${continueCount}) — host odlučuje`
+    );
+    voteCard.append(resultEl);
+
+    if (state.isHost) {
+      if (winner === "vote" || winner === "tie") {
+        voteCard.append(btn("🗳️ Pokreni glasanje","btn-primary",()=>{
+          state.dawnVoteCounts={};
+          send("start_voting");
+        },{background:"#c0392b",marginTop:"10px"}));
+      }
+      if (winner === "continue" || winner === "tie") {
+        voteCard.append(btn("▶ Sledeća runda","btn-primary",()=>{
+          state.dawnVoteCounts={};
+          send("next_round");
+        },{marginTop:"6px"}));
+      }
+    } else {
+      voteCard.append(el("p",{class:"hint",style:{textAlign:"center",marginTop:"10px"}},"⏳ Čekaj hosta..."));
+    }
+  } else {
+    voteCard.append(el("p",{class:"hint",style:{textAlign:"center",marginTop:"10px",fontSize:"0.82rem"}},
+      `Glasalo ${voteCount+continueCount} od ${totalAlive} igrača`
+    ));
+  }
+
+  app.append(voteCard);
 }
 
 // ── VOTING ──
