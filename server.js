@@ -38,12 +38,22 @@ function shuffle(arr) {
   return a;
 }
 
-function assignRoles(players, includeJoker) {
-  const roles = ["mafia","doctor","police"];
-  if (includeJoker) roles.push("joker");
+function assignRoles(players, counts) {
+  // counts = { mafia, doctor, police, joker }
+  const roles = [];
+  for (let i=0;i<counts.mafia;i++) roles.push("mafia");
+  for (let i=0;i<counts.doctor;i++) roles.push("doctor");
+  for (let i=0;i<counts.police;i++) roles.push("police");
+  for (let i=0;i<counts.joker;i++) roles.push("joker");
   while (roles.length < players.length) roles.push("civilian");
   const shuffled = shuffle(roles);
-  return players.map((p, i) => ({ ...p, role: shuffled[i], alive: true, silenced: false }));
+  // Store original joker order for inheritance (by index in shuffled)
+  const jokerOrder = [];
+  shuffled.forEach((r,i) => { if (r==="joker") jokerOrder.push(players[i].id); });
+  return { 
+    assigned: players.map((p, i) => ({ ...p, role: shuffled[i], alive: true, silenced: false })),
+    jokerOrder
+  };
 }
 
 function createRoom(hostWs, hostName, includeJoker) {
@@ -52,16 +62,18 @@ function createRoom(hostWs, hostName, includeJoker) {
 
   const room = {
     code,
-    phase: "lobby",      // lobby | night | dawn | voting | gameover
-    players: [],         // [{id, name, role, alive, silenced, ws}]
+    phase: "lobby",
+    players: [],
     hostId: null,
     includeJoker,
+    roleCounts: { mafia:1, doctor:1, police:1, joker:0 },
+    jokerOrder: [],      // original joker ids in order for inheritance
     round: 1,
-    nightActions: {},    // {mafia, doctor, police, joker} -> playerId
-    nightOrder: [],      // roles to act this night
-    nightIdx: 0,         // which role is currently acting
-    votes: {},           // voterId -> targetId
-    votersLeft: [],      // ids yet to vote
+    nightActions: {},
+    nightOrder: [],
+    nightIdx: 0,
+    votes: {},
+    votersLeft: [],
     dawnResult: null,
   };
 
@@ -98,6 +110,7 @@ function broadcastLobby(room) {
     players: room.players.map(p => ({ id: p.id, name: p.name })),
     hostId: room.hostId,
     includeJoker: room.includeJoker,
+    roleCounts: room.roleCounts,
     code: room.code,
   });
 }
@@ -118,7 +131,11 @@ function publicPlayers(room) {
 }
 
 function startGame(room) {
-  room.players = assignRoles(room.players, room.includeJoker);
+  const counts = { ...room.roleCounts };
+  if (!room.includeJoker) counts.joker = 0;
+  const { assigned, jokerOrder } = assignRoles(room.players, counts);
+  room.players = assigned;
+  room.jokerOrder = jokerOrder;
   room.phase = "night";
   room.round = 1;
 
@@ -130,18 +147,19 @@ function startGame(room) {
 }
 
 function buildNightOrder(room) {
-  const order = [];
+  // Returns list of player IDs in order: all mafia, then doctors, then police, then jokers
   const alive = room.players.filter(p => p.alive);
-  if (alive.some(p => p.role === "mafia"))   order.push("mafia");
-  if (alive.some(p => p.role === "doctor"))  order.push("doctor");
-  if (alive.some(p => p.role === "police"))  order.push("police");
-  if (alive.some(p => p.role === "joker"))   order.push("joker");
+  const order = [];
+  ["mafia","doctor","police","joker"].forEach(role => {
+    alive.filter(p => p.role === role).forEach(p => order.push(p.id));
+  });
   return order;
 }
 
 function startNight(room) {
   room.phase = "night";
   room.nightActions = {};
+  room.nightActionsByPlayer = {};
   room.nightOrder = buildNightOrder(room);
   room.nightIdx = 0;
 
@@ -151,71 +169,100 @@ function startNight(room) {
 
 function promptNightRole(room) {
   if (room.nightIdx >= room.nightOrder.length) {
-    // All roles done — process dawn
     processDawn(room);
     return;
   }
 
-  const currentRole = room.nightOrder[room.nightIdx];
-  const actingPlayers = room.players.filter(p => p.role === currentRole && p.alive);
+  const currentPlayerId = room.nightOrder[room.nightIdx];
+  const currentPlayer = room.players.find(p => p.id === currentPlayerId);
+  if (!currentPlayer || !currentPlayer.alive) {
+    // Skip dead players
+    room.nightIdx++;
+    promptNightRole(room);
+    return;
+  }
+
+  const currentRole = currentPlayer.role;
   const alive = room.players.filter(p => p.alive);
 
-  // Tell everyone who is acting (no sensitive info)
   broadcast(room, "night_role_prompt", {
     role: currentRole,
     roleLabel: ROLES[currentRole].label,
     roleEmoji: ROLES[currentRole].emoji,
     roleColor: ROLES[currentRole].color,
+    actingPlayerName: currentPlayer.name,
   });
 
-  // Tell the acting player(s) to pick
   const targets = alive.filter(p => {
     if (currentRole === "mafia") return p.role !== "mafia";
-    return !actingPlayers.some(a => a.id === p.id);
+    return p.id !== currentPlayer.id;
   }).map(p => ({ id: p.id, name: p.name }));
 
-  actingPlayers.forEach(p => {
-    send(p.ws, "your_turn", {
-      role: currentRole,
-      targets,
-      isPolice: currentRole === "police",
-    });
+  send(currentPlayer.ws, "your_turn", {
+    role: currentRole,
+    targets,
+    isPolice: currentRole === "police",
   });
 }
 
 function processDawn(room) {
-  const { mafia, doctor, police, joker } = room.nightActions;
+  const actions = room.nightActionsByPlayer || {};
 
-  const mafiaTarget = mafia ? room.players.find(p => p.id === mafia) : null;
-  const doctorTarget = doctor ? room.players.find(p => p.id === doctor) : null;
-  const jokerTarget = joker ? room.players.find(p => p.id === joker) : null;
+  // Collect all targets by role
+  const killTargetIds = new Set();
+  const saveTargetIds = new Set();
+  const silenceTargetIds = new Set();
 
-  const killed = mafiaTarget && (!doctorTarget || doctorTarget.id !== mafiaTarget.id) ? mafiaTarget : null;
-  const savedAttempt = mafiaTarget && doctorTarget && doctorTarget.id === mafiaTarget.id;
+  Object.values(actions).forEach(({ role, targetId }) => {
+    if (role === "mafia")  killTargetIds.add(targetId);
+    if (role === "doctor") saveTargetIds.add(targetId);
+    if (role === "joker")  silenceTargetIds.add(targetId);
+  });
 
-  // Joker takeover?
-  const killedIsMafia = killed && killed.role === "mafia";
-  const livingJoker = killedIsMafia
-    ? room.players.find(p => p.role === "joker" && p.alive && p.id !== killed.id)
-    : null;
+  // Killed = attacked but NOT saved
+  const killedPlayers = room.players.filter(p =>
+    killTargetIds.has(p.id) && !saveTargetIds.has(p.id) && p.alive
+  );
+  // Saved = attacked AND saved
+  const savedPlayers = room.players.filter(p =>
+    killTargetIds.has(p.id) && saveTargetIds.has(p.id) && p.alive
+  );
+  // Silenced
+  const silencedPlayers = room.players.filter(p =>
+    silenceTargetIds.has(p.id) && p.alive
+  );
+
+  // Joker takeovers — for each killed mafia, find next joker in order
+  const jokerTakeovers = [];
+  const promotedJokerIds = new Set();
+  killedPlayers.filter(p => p.role === "mafia").forEach(deadMafia => {
+    const nextJoker = room.jokerOrder
+      .map(jid => room.players.find(p => p.id === jid))
+      .find(p => p && p.role === "joker" && p.alive &&
+            !killedPlayers.some(k => k.id === p.id) &&
+            !promotedJokerIds.has(p.id));
+    if (nextJoker) {
+      jokerTakeovers.push({ from: deadMafia, to: nextJoker });
+      promotedJokerIds.add(nextJoker.id);
+    }
+  });
 
   // Apply changes
   room.players = room.players.map(p => {
-    if (killed && p.id === killed.id) return { ...p, alive: false };
-    if (livingJoker && p.id === livingJoker.id) return { ...p, role: "mafia", silenced: false };
-    if (jokerTarget && p.id === jokerTarget.id) return { ...p, silenced: true };
+    if (killedPlayers.some(k => k.id === p.id)) return { ...p, alive: false, silenced: false };
+    if (promotedJokerIds.has(p.id)) return { ...p, role: "mafia", silenced: false };
+    if (silencedPlayers.some(s => s.id === p.id)) return { ...p, silenced: true };
     return { ...p, silenced: false };
   });
 
   room.phase = "dawn";
-
-  room.dawnVotes = {}; // reset votes for this dawn
+  room.dawnVotes = {};
 
   broadcast(room, "dawn", {
-    killed: killed ? { id: killed.id, name: killed.name } : null,
-    savedAttempt,
-    silenced: jokerTarget ? { id: jokerTarget.id, name: jokerTarget.name } : null,
-    jokerTakeover: livingJoker ? { id: livingJoker.id, name: livingJoker.name } : null,
+    killed: killedPlayers.map(p => ({ id: p.id, name: p.name })),
+    saved: savedPlayers.map(p => ({ id: p.id, name: p.name })),
+    silenced: silencedPlayers.map(p => ({ id: p.id, name: p.name })),
+    jokerTakeovers: jokerTakeovers.map(jt => ({ from: jt.from.name, to: jt.to.name })),
     players: publicPlayers(room),
     round: room.round,
   });
@@ -273,8 +320,11 @@ function processVoteResult(room) {
 
   const eliminated = room.players.find(p => p.id === topIds[0]);
   const isMafia = eliminated.role === "mafia";
+  // Joker takeover — pick first joker in original order
   const livingJokerAfter = isMafia
-    ? room.players.find(p => p.role === "joker" && p.alive && p.id !== eliminated.id)
+    ? room.jokerOrder
+        .map(jid => room.players.find(p => p.id === jid))
+        .find(p => p && p.role === "joker" && p.alive && p.id !== eliminated.id)
     : null;
 
   room.players = room.players.map(p => p.id === eliminated.id ? { ...p, alive: false } : p);
@@ -289,11 +339,12 @@ function processVoteResult(room) {
     eliminated: { id: eliminated.id, name: eliminated.name, role: eliminated.role, roleLabel: ROLES[eliminated.role].label, roleEmoji: ROLES[eliminated.role].emoji },
     isMafia,
     jokerTakeover: livingJokerAfter ? { id: livingJokerAfter.id, name: livingJokerAfter.name } : null,
-    cityWins: isMafia && !livingJokerAfter,
+    cityWins: isMafia && (room.players.filter(p => p.role === "mafia" && p.alive).length === 0),
     players: publicPlayers(room),
   });
 
-  if (isMafia && !livingJokerAfter) {
+  const remainingMafia2 = room.players.filter(p => p.role === "mafia" && p.alive).length;
+  if (isMafia && remainingMafia2 === 0) {
     room.phase = "gameover";
   }
 }
@@ -323,7 +374,7 @@ wss.on("connection", (ws) => {
       const room = rooms[code.toUpperCase()];
       if (!room) { send(ws, "error", { message: "Soba ne postoji. Proveri kod." }); return; }
       if (room.phase !== "lobby") { send(ws, "error", { message: "Igra je već počela." }); return; }
-      if (room.players.length >= 12) { send(ws, "error", { message: "Soba je puna (max 12 igrača)." }); return; }
+      if (room.players.length >= 30) { send(ws, "error", { message: "Soba je puna (max 30 igrača)." }); return; }
       if (room.players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
         send(ws, "error", { message: "Ime je već zauzeto." }); return;
       }
@@ -343,6 +394,22 @@ wss.on("connection", (ws) => {
     if (type === "toggle_joker") {
       if (player.id !== room.hostId) return;
       room.includeJoker = !room.includeJoker;
+      if (!room.includeJoker) room.roleCounts.joker = 0;
+      else if (room.roleCounts.joker === 0) room.roleCounts.joker = 1;
+      broadcastLobby(room);
+      return;
+    }
+
+    // ── SET ROLE COUNT (host only) ──
+    if (type === "set_role_count") {
+      if (player.id !== room.hostId) return;
+      const { role, count } = msg;
+      if (!["mafia","doctor","police","joker"].includes(role)) return;
+      const n = Math.max(0, Math.min(10, parseInt(count)||0));
+      if (role === "mafia" && n < 1) return; // must have at least 1 mafia
+      if (role === "joker" && n > 0) room.includeJoker = true;
+      if (role === "joker" && n === 0) room.includeJoker = false;
+      room.roleCounts[role] = n;
       broadcastLobby(room);
       return;
     }
@@ -350,9 +417,10 @@ wss.on("connection", (ws) => {
     // ── START GAME (host only) ──
     if (type === "start_game") {
       if (player.id !== room.hostId) return;
-      const min = room.includeJoker ? 4 : 3;
-      if (room.players.length < min) {
-        send(ws, "error", { message: `Potrebno je najmanje ${min} igrača.` });
+      const counts = room.roleCounts;
+      const totalSpecial = counts.mafia + counts.doctor + counts.police + (room.includeJoker ? counts.joker : 0);
+      if (room.players.length < totalSpecial) {
+        send(ws, "error", { message: `Nedovoljno igrača. Trebaš najmanje ${totalSpecial} za odabrane uloge.` });
         return;
       }
       startGame(room);
@@ -362,9 +430,11 @@ wss.on("connection", (ws) => {
     // ── NIGHT ACTION (pick target) ──
     if (type === "night_pick") {
       const { targetId } = msg;
-      const currentRole = room.nightOrder[room.nightIdx];
-      if (player.role !== currentRole || !player.alive) return;
-      room.nightActions[currentRole] = targetId;
+      const currentPlayerId = room.nightOrder[room.nightIdx];
+      if (player.id !== currentPlayerId || !player.alive) return;
+      // Store action per player ID
+      if (!room.nightActionsByPlayer) room.nightActionsByPlayer = {};
+      room.nightActionsByPlayer[player.id] = { role: player.role, targetId };
       room.nightIdx++;
       promptNightRole(room);
       return;
